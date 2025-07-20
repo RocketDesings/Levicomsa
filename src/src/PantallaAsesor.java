@@ -3,6 +3,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class PantallaAsesor {
+    private JFrame pantalla; // atributo
     private JPanel panelMain;
     private JTable table1;
     private JButton btnAgregarCliente;
@@ -26,8 +27,8 @@ public class PantallaAsesor {
         //btnAgregarCliente.addActionListener(e -> agregarCliente());
         //btnModificarCliente.addActionListener(e -> modificarCliente());
         //btnCobrar.addActionListener(e -> cobrar());
-        //btnSalir.addActionListener(e -> salir());
-        JFrame pantalla = new JFrame("Pantalla Asesor");
+        btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
+        pantalla = new JFrame("Pantalla Asesor"); // Usa el atributo, no declares una nueva variable
         pantalla.setUndecorated(true);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -35,6 +36,7 @@ public class PantallaAsesor {
         pantalla.setLocationRelativeTo(null); // Centra la ventana
         pantalla.setVisible(true);
         iniciarReloj();
+
     }
 
     private void iniciarReloj() {
@@ -45,4 +47,8 @@ public class PantallaAsesor {
         });
         timer.start();
     }
+    private void mostrarAlertaCerrarSesion() {
+        AlertaCerrarSesion alerta = new AlertaCerrarSesion(pantalla);
+    }
+
 }
