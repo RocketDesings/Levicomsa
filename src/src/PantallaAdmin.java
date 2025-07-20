@@ -19,4 +19,8 @@ public class PantallaAdmin {
     private JButton btnModificarCliente;
     private JButton btnCobrar;
     private JButton btnSalir;
+
+    public PantallaAdmin() {
+        System.out.println("Pantalla de administrador creada correctamente.");
+    }
 }

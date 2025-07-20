@@ -37,20 +37,35 @@ public class Login {
             System.exit(0);
         });
 
-        //BOTON INICIAR SESION
+// Evento del botón
         btnIniciarSesion.addActionListener(e -> {
             String user = txtUsuario.getText().trim();
             String pass = txtContrasena.getText().trim();
 
-            // Evita validar si se dejaron los placeholders
             if (user.equals("Usuario") || pass.equals("Contraseña") || user.isEmpty() || pass.isEmpty()) {
                 JOptionPane.showMessageDialog(null, "Por favor completa todos los campos.");
                 return;
             }
 
-            if (validarCredenciales(user, pass)) {
+            int rolId = obtenerRolIdUsuario(user, pass);
+            if (rolId > 0) {
                 JOptionPane.showMessageDialog(null, "Bienvenido " + user + " ✅");
-                // Aquí puedes redirigir al menú principal o siguiente ventana
+                JFrame frameActual = (JFrame) SwingUtilities.getWindowAncestor(mainPanel);
+                frameActual.dispose();
+
+                switch (rolId) {
+                    case 3:
+                        new PantallaAsesor();
+                        break;
+                    case 1:
+                        new pantallaCajero();
+                        break;
+                    case 2:
+                        new PantallaAdmin();
+                        break;
+                    default:
+                        JOptionPane.showMessageDialog(null, "Rol desconocido.");
+                }
             } else {
                 JOptionPane.showMessageDialog(null, "Usuario o contraseña incorrectos ❌");
             }
@@ -80,23 +95,20 @@ public class Login {
         });
     }//fin del metodo setPlaceholder
 
-    // Metodo para validar las credenciales del usuario
-    private boolean validarCredenciales(String usuario, String contraseña) {
-        String sql = "SELECT * FROM Usuarios WHERE usuario = ? AND contraseña = ?";
-
+    private int obtenerRolIdUsuario(String usuario, String contraseña) {
+        String sql = "SELECT rol_id FROM Usuarios WHERE usuario = ? AND contraseña = ?";
         try (Connection conn = JDBC.obtenerConexion();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setString(1, usuario);
             stmt.setString(2, contraseña);
-
             ResultSet rs = stmt.executeQuery();
-            return rs.next(); // Si encuentra un registro, el login es válido
-
+            if (rs.next()) {
+                return rs.getInt("rol_id");
+            }
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Error al conectar con la base de datos.");
-            return false;
         }
+        return -1; // -1 indica error o usuario no encontrado
     }
 }// fin de la clase Login
