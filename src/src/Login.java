@@ -5,6 +5,7 @@ public class Login {
     private JTextField txtusuario;
     private JTextField txtContrasena;
     private JButton btnIniciarSesion;
+    private JButton btnSalir;
 
     public Login() {
         JFrame loginFrame = new JFrame("Login");
@@ -14,6 +15,6 @@ public class Login {
         loginFrame.setLocationRelativeTo(null);
         loginFrame.setVisible(true);
 
-        //btnIniciarSesion.addActionListener(e -> iniciar());
+        btnIniciarSesion.addActionListener(e -> iniciar());
     }
 }
