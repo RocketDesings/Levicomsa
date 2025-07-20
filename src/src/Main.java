@@ -4,6 +4,8 @@ public class Main {
 
         //Login.iniciar();
 
+        PantallaAsesor p = new PantallaAsesor();
+
         System.out.println("El programa ha iniciado correctamente.");
     }
 }

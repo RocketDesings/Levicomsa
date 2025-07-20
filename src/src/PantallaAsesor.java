@@ -27,7 +27,12 @@ public class PantallaAsesor {
         //btnModificarCliente.addActionListener(e -> modificarCliente());
         //btnCobrar.addActionListener(e -> cobrar());
         //btnSalir.addActionListener(e -> salir());
-
+        JFrame pantalla = new JFrame("Pantalla Asesor");
+        pantalla.setContentPane(panelMain);
+        pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        pantalla.pack();
+        pantalla.setLocationRelativeTo(null); // Centra la ventana
+        pantalla.setVisible(true);
         horaActual();
     }
 
