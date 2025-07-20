@@ -28,6 +28,7 @@ public class PantallaAsesor {
         //btnCobrar.addActionListener(e -> cobrar());
         //btnSalir.addActionListener(e -> salir());
         JFrame pantalla = new JFrame("Pantalla Asesor");
+        pantalla.setUndecorated(true);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         pantalla.pack();
