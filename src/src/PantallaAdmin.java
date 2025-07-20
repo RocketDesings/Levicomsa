@@ -1,26 +1,55 @@
 import javax.swing.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class PantallaAdmin {
+    private JFrame pantalla; // atributo
     private JPanel panelMain;
-    private JLabel lblImagen;
-    private JLabel lblNombre;
-    private JPanel panelInfo;
-    private JLabel lblTitulo;
-    private JLabel lblSlogan;
-    private JLabel lblIcono;
-    private JLabel lblSucursal;
-    private JLabel lblHora;
     private JTable table1;
-    private JPanel panelBusqueda;
-    private JComboBox comboBox1;
-    private JButton button1;
-    private JPanel panelBotones;
     private JButton btnAgregarCliente;
     private JButton btnModificarCliente;
     private JButton btnCobrar;
     private JButton btnSalir;
+    private JButton btnEliminarCliente;
+    private JLabel lblNombre;
+    private JLabel lblImagen;
+    private JLabel lblHora;
+    private JLabel lblIcono;
+    private JLabel lblTitulo;
+    private JPanel panelInfo;
+    private JLabel lblSlogan;
+    private JLabel lblSucursal;
+    private JComboBox comboBox1;
+    private JButton button1;
+    private JPanel panelBotones;
+    private JPanel panelBusqueda;
 
     public PantallaAdmin() {
-        System.out.println("Pantalla de administrador creada correctamente.");
+        //btnAgregarCliente.addActionListener(e -> agregarCliente());
+        //btnModificarCliente.addActionListener(e -> modificarCliente());
+        //btnCobrar.addActionListener(e -> cobrar());
+        btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
+        pantalla = new JFrame("Pantalla Asesor"); // Usa el atributo, no declares una nueva variable
+        pantalla.setUndecorated(true);
+        pantalla.setContentPane(panelMain);
+        pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        pantalla.pack();
+        pantalla.setLocationRelativeTo(null); // Centra la ventana
+        pantalla.setVisible(true);
+        iniciarReloj();
+
     }
+
+    private void iniciarReloj() {
+        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        Timer timer = new Timer(1000, e -> {
+            String horaActual = formato.format(new Date());
+            lblHora.setText(horaActual);
+        });
+        timer.start();
+    }
+    private void mostrarAlertaCerrarSesion() {
+        AlertaCerrarSesion alerta = new AlertaCerrarSesion(pantalla);
+    }
+
 }

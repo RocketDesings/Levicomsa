@@ -11,7 +11,6 @@ public class Login {
     private JButton btnIniciarSesion;
     private JButton btnSalir;
 
-
     public Login() {
         // Inicializar el JFrame
         JFrame loginFrame = new JFrame("Login");
