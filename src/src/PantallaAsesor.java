@@ -33,15 +33,23 @@ public class PantallaAsesor {
         pantalla.pack();
         pantalla.setLocationRelativeTo(null); // Centra la ventana
         pantalla.setVisible(true);
-        TimerHora();
+        horaActual();
     }
 
-    private void TimerHora() {
-        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-        Timer timer = new Timer(1000, e -> {
-            String horaActual = formato.format(new Date());
-            lblHora.setText(horaActual);
+    private void horaActual() {
+        Thread reloj = new Thread(() -> {
+            SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            while (true) {
+                String horaActual = formato.format(new Date());
+                SwingUtilities.invokeLater(() -> lblHora.setText(horaActual));
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
         });
-        timer.start();
+        reloj.setDaemon(true);
+        reloj.start();
     }
 }
