@@ -11,7 +11,7 @@ public class Login {
         loginFrame.setContentPane(mainPanel);
         loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         loginFrame.pack();
-        loginFrame.setLocationRelativeTo(null); // Centra la ventana
+        loginFrame.setLocationRelativeTo(null);
         loginFrame.setVisible(true);
 
         //btnIniciarSesion.addActionListener(e -> iniciar());
