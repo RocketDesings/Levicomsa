@@ -1,8 +1,5 @@
 public class Main {
-    public static void main(String[] args){
-        //Login inicio = new Login();
-
-        //Login.iniciar();
+    public static void main(String[] args) {
 
         PantallaAsesor p = new PantallaAsesor();
         Login log = new Login();

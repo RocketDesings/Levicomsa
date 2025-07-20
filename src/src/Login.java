@@ -15,6 +15,6 @@ public class Login {
         loginFrame.setLocationRelativeTo(null);
         loginFrame.setVisible(true);
 
-        btnIniciarSesion.addActionListener(e -> iniciar());
+        //btnIniciarSesion.addActionListener(e -> iniciar());
     }
 }
