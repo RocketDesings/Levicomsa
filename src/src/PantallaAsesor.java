@@ -1,7 +1,8 @@
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import javax.swing.table.DefaultTableModel;
 
 public class PantallaAsesor {
     private JFrame pantalla;
@@ -26,8 +27,6 @@ public class PantallaAsesor {
     private JTable tblASesor;
 
     public PantallaAsesor() {
-        // btnModificarCliente.addActionListener(e -> modificarCliente());
-        // btnCobrar.addActionListener(e -> cobrar());
         btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
 
         pantalla = new JFrame("Pantalla Asesor");
@@ -40,6 +39,7 @@ public class PantallaAsesor {
 
         iniciarReloj();
         configurarTabla();
+        cargarClientesDesdeBD();
 
         btnAgregarCliente.addActionListener(e -> {
             pantalla.setVisible(false);
@@ -61,12 +61,43 @@ public class PantallaAsesor {
     }
 
     public void configurarTabla() {
-        String[] columnas = {"id_cliente", "Nombre", "Teléfono", "CURP", "pensionado", "RFC", "correo"};
-        DefaultTableModel modelo = new DefaultTableModel(columnas, 0); // 0 filas iniciales
+        // Quitamos id_cliente de columnas
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "pensionado", "RFC", "correo"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
         tblAsesor.setModel(modelo);
     }
 
     public void mostrar() {
-        pantalla.setVisible(true); // Método para mostrar esta ventana desde afuera
+        pantalla.setVisible(true);
+        cargarClientesDesdeBD();  // Refrescar datos al mostrar la ventana
+    }
+
+    public void cargarClientesDesdeBD() {
+        String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, correo FROM Clientes";
+
+        try (Connection conn = JDBC.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            DefaultTableModel modelo = (DefaultTableModel) tblAsesor.getModel();
+
+            modelo.setRowCount(0); // Limpiar tabla
+
+            while (rs.next()) {
+                String nombre = rs.getString("nombre");
+                String telefono = rs.getString("telefono");
+                String curp = rs.getString("CURP");
+                boolean pensionadoBool = rs.getBoolean("pensionado");
+                String pensionado = pensionadoBool ? "Sí" : "No";
+                String rfc = rs.getString("RFC");
+                String correo = rs.getString("correo");
+
+                Object[] fila = {nombre, telefono, curp, pensionado, rfc, correo};
+                modelo.addRow(fila);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
