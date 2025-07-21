@@ -2,13 +2,9 @@ import javax.swing.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.JButton;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-
 
 public class PantallaAsesor {
-    private JFrame pantalla; // atributo
+    private JFrame pantalla;
     private JPanel panelMain;
     private JTable tblAsesor;
     private JButton btnAgregarCliente;
@@ -27,31 +23,27 @@ public class PantallaAsesor {
     private JButton button1;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
-    private javax.swing.JTable tblASesor;
-
-
+    private JTable tblASesor;
 
     public PantallaAsesor() {
-        //btnAgregarCliente.addActionListener(e -> agregarCliente());
-        //btnModificarCliente.addActionListener(e -> modificarCliente());
-        //btnCobrar.addActionListener(e -> cobrar());
+        // btnModificarCliente.addActionListener(e -> modificarCliente());
+        // btnCobrar.addActionListener(e -> cobrar());
         btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
-        pantalla = new JFrame("Pantalla Asesor"); // Usa el atributo, no declares una nueva variable
+
+        pantalla = new JFrame("Pantalla Asesor");
         pantalla.setUndecorated(true);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         pantalla.pack();
-        pantalla.setLocationRelativeTo(null); // Centra la ventana
+        pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
+
         iniciarReloj();
         configurarTabla();
 
-        btnAgregarCliente.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                FormularioAgregarCliente formulario = new FormularioAgregarCliente();
-                formulario.setVisible(true);
-            }
+        btnAgregarCliente.addActionListener(e -> {
+            pantalla.setVisible(false);
+            new FormularioAgregarCliente(this);
         });
     }
 
@@ -63,18 +55,18 @@ public class PantallaAsesor {
         });
         timer.start();
     }
+
     private void mostrarAlertaCerrarSesion() {
         AlertaCerrarSesion alerta = new AlertaCerrarSesion(pantalla);
     }
 
     public void configurarTabla() {
         String[] columnas = {"id_cliente", "Nombre", "Teléfono", "CURP", "pensionado", "RFC", "correo"};
-        DefaultTableModel modelo = new DefaultTableModel(columnas, 0); // 0 filas
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0); // 0 filas iniciales
         tblAsesor.setModel(modelo);
     }
 
-
-
-
-
+    public void mostrar() {
+        pantalla.setVisible(true); // Método para mostrar esta ventana desde afuera
+    }
 }
