@@ -47,6 +47,12 @@ public class FormularioAgregarCliente extends JFrame {
             JOptionPane.showMessageDialog(this, "Por favor, complete todos los campos.");
             return;
         }
+        if (curp.length() != 18) {
+            JOptionPane.showMessageDialog(this, "La CURP debe tener exactamente 18 caracteres.");
+            txtCurp.requestFocus();
+            return;
+        }
+
 
         String sql = "INSERT INTO Clientes (nombre, telefono, CURP, pensionado, RFC, correo) VALUES (?, ?, ?, ?, ?, ?)";
 
