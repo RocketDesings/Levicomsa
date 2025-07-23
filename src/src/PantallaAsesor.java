@@ -25,6 +25,8 @@ public class PantallaAsesor implements Refrescable {
     private JPanel panelBotones;
     private JPanel panelBusqueda;
 
+    private AutoActualizarTabla autoActualizador;
+
     public PantallaAsesor() {
         btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
 
@@ -39,6 +41,9 @@ public class PantallaAsesor implements Refrescable {
         iniciarReloj();
         configurarTabla();
         cargarClientesDesdeBD();
+
+        autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 5000);
+        autoActualizador.iniciar();
 
         btnAgregarCliente.addActionListener(e -> {
             new FormularioAgregarCliente(this);
@@ -62,11 +67,6 @@ public class PantallaAsesor implements Refrescable {
         String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "Correo"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
         tblAsesor.setModel(modelo);
-    }
-
-    public void mostrar() {
-        pantalla.setVisible(true);
-        cargarClientesDesdeBD();
     }
 
     public void cargarClientesDesdeBD() {
@@ -95,6 +95,11 @@ public class PantallaAsesor implements Refrescable {
             JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public void mostrar() {
+        pantalla.setVisible(true);
+        cargarClientesDesdeBD();
     }
 
     @Override
