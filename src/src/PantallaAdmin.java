@@ -26,6 +26,8 @@ public class PantallaAdmin implements Refrescable {
     private JButton btnEliminar;
     private JTextField textField1;
 
+    private AutoActualizarTabla autoActualizador; // NUEVO
+
     public PantallaAdmin() {
         pantalla = new JFrame("Pantalla Admin");
         pantalla.setContentPane(panelMain);
@@ -38,13 +40,22 @@ public class PantallaAdmin implements Refrescable {
         configurarTabla();
         cargarClientesDesdeBD();
 
+        // Inicia autoactualización cada 30 segundos
+        autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 30000);
+        autoActualizador.iniciar();
+
         btnAgregarCliente.addActionListener(e -> {
             new FormularioAgregarCliente(this);
         });
+
         btnEliminar.addActionListener(e -> {
             new SeleccionarCliente();
         });
-        btnSalir.addActionListener(e -> System.exit(0));
+
+        btnSalir.addActionListener(e -> {
+            autoActualizador.detener(); // Detiene el hilo si cierra
+            System.exit(0);
+        });
     }
 
     private void iniciarReloj() {
