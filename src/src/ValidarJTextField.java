@@ -15,7 +15,6 @@ public class ValidarJTextField {
         return campo.getText().matches("[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+");
     }
 
-    // Nuevo: valida que NO contenga ningún número
     public static boolean validarNoContieneNumeros(JTextField campo) {
         return !campo.getText().matches(".*\\d.*");
     }
@@ -45,4 +44,13 @@ public class ValidarJTextField {
         return campo.getText().matches(regex);
     }
 
+    public static boolean validarCURP(JTextField campo) {
+        String regexCurp = "^[A-Z]{4}\\d{6}[HM][A-Z]{5}[A-Z0-9]{2}$";
+        return campo.getText().toUpperCase().matches(regexCurp);
+    }
+
+    public static boolean validarRFC(JTextField campo) {
+        String regexRfc = "^[A-ZÑ&]{3,4}\\d{6}[A-Z0-9]{3}$";
+        return campo.getText().toUpperCase().matches(regexRfc);
+    }
 }
