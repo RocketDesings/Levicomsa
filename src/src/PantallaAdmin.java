@@ -21,10 +21,10 @@ public class PantallaAdmin implements Refrescable {
     private JLabel lblSucursal;
     private JPanel panelInfo;
     private JComboBox comboBox1;
-    private JButton button1;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
     private JButton btnEliminar;
+    private JTextField textField1;
 
     public PantallaAdmin() {
         pantalla = new JFrame("Pantalla Admin");
@@ -39,7 +39,6 @@ public class PantallaAdmin implements Refrescable {
         cargarClientesDesdeBD();
 
         btnAgregarCliente.addActionListener(e -> {
-            pantalla.setVisible(false);
             new FormularioAgregarCliente(this);
         });
         btnEliminar.addActionListener(e -> {

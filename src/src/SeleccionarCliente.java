@@ -16,8 +16,6 @@
         private JPanel panel1;
         private JTable tblClientes;
         private JTextField txtRFC;
-        private JButton btnBuscarRFC;
-        private JButton btnBuscarCurp;
         private JTextField txtCURP;
         private JButton btnCancelar;
 
