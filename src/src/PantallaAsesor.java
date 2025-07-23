@@ -4,7 +4,7 @@ import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class PantallaAsesor {
+public class PantallaAsesor implements Refrescable {
     private JFrame pantalla;
     private JPanel panelMain;
     private JTable tblAsesor;
@@ -41,11 +41,8 @@ public class PantallaAsesor {
         cargarClientesDesdeBD();
 
         btnAgregarCliente.addActionListener(e -> {
-            pantalla.setVisible(false);
-            new FormularioAgregarCliente(pantalla);
+            new FormularioAgregarCliente(this);
         });
-
-
     }
 
     private void iniciarReloj() {
@@ -98,5 +95,11 @@ public class PantallaAsesor {
             JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void refrescarDatos() {
+        cargarClientesDesdeBD();
+        pantalla.setVisible(true);
     }
 }

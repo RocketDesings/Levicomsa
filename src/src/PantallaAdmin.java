@@ -4,7 +4,7 @@ import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class PantallaAdmin {
+public class PantallaAdmin implements Refrescable {
     private JFrame pantalla;
     private JPanel panelMain;
     private JTable table1;
@@ -40,13 +40,10 @@ public class PantallaAdmin {
 
         btnAgregarCliente.addActionListener(e -> {
             pantalla.setVisible(false);
-            new FormularioAgregarCliente(pantalla);
+            new FormularioAgregarCliente(this);
         });
 
-        btnSalir.addActionListener(e -> {
-            // Aquí puedes manejar cierre de sesión o salir de la app
-            System.exit(0);
-        });
+        btnSalir.addActionListener(e -> System.exit(0));
     }
 
     private void iniciarReloj() {
@@ -95,5 +92,11 @@ public class PantallaAdmin {
     public void mostrar() {
         pantalla.setVisible(true);
         cargarClientesDesdeBD();
+    }
+
+    @Override
+    public void refrescarDatos() {
+        cargarClientesDesdeBD();
+        pantalla.setVisible(true);
     }
 }

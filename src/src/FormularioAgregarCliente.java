@@ -13,10 +13,10 @@ public class FormularioAgregarCliente extends JFrame {
     private JTextField txtCorreo;
     public JButton btnAgregar;
     public JButton btnCancelar;
-    private JFrame pantallaPrincipal; // Puede ser asesor o admin
 
-    // Constructor genérico
-    public FormularioAgregarCliente(JFrame pantallaPrincipal) {
+    private Refrescable pantallaPrincipal;  // Ahora Refrescable
+
+    public FormularioAgregarCliente(Refrescable pantallaPrincipal) {
         this.pantallaPrincipal = pantallaPrincipal;
 
         setTitle("Agregar Cliente");
@@ -30,7 +30,7 @@ public class FormularioAgregarCliente extends JFrame {
 
         btnCancelar.addActionListener(e -> {
             dispose();
-            pantallaPrincipal.setVisible(true); // Mostrar pantalla anterior
+            pantallaPrincipal.refrescarDatos();  // Refrescar datos al cerrar
         });
     }
 
@@ -69,7 +69,7 @@ public class FormularioAgregarCliente extends JFrame {
             if (resultado > 0) {
                 JOptionPane.showMessageDialog(this, "Cliente agregado correctamente.");
                 dispose();
-                pantallaPrincipal.setVisible(true);
+                pantallaPrincipal.refrescarDatos();  // Refrescar tabla después de agregar
             } else {
                 JOptionPane.showMessageDialog(this, "Error al agregar cliente.");
             }
