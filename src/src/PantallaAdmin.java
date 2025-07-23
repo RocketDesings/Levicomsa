@@ -42,7 +42,9 @@ public class PantallaAdmin implements Refrescable {
             pantalla.setVisible(false);
             new FormularioAgregarCliente(this);
         });
-
+        button2.addActionListener(e -> {
+            new SeleccionarCliente();
+        });
         btnSalir.addActionListener(e -> System.exit(0));
     }
 

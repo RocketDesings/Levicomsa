@@ -3,6 +3,7 @@
     import javax.swing.event.DocumentListener;
     import javax.swing.table.DefaultTableModel;
     import javax.swing.table.TableRowSorter;
+    import java.awt.event.MouseAdapter;
     import java.sql.Connection;
     import java.sql.PreparedStatement;
     import java.sql.ResultSet;
@@ -10,7 +11,8 @@
     import java.util.ArrayList;
     import java.util.List;
 
-    public class SeleccionarCliente {
+    public class SeleccionarCliente implements Refrescable{
+        private Refrescable refrescable;
         private JPanel panel1;
         private JTable tblClientes;
         private JTextField txtRFC;
@@ -60,13 +62,46 @@
                 }
             });
 
+            tblClientes.addMouseListener(new MouseAdapter() {
+                public void mouseClicked(java.awt.event.MouseEvent evt) {
+                    if (evt.getClickCount() == 2) { // Doble clic
+                        int row = tblClientes.getSelectedRow();
+                        if (row != -1) {
+                            row = tblClientes.convertRowIndexToModel(row); // Por si hay filtro
+
+                            DefaultTableModel model = (DefaultTableModel) tblClientes.getModel();
+
+                            String nombre = model.getValueAt(row, 0).toString();
+                            String telefono = model.getValueAt(row, 1).toString();
+                            String curp = model.getValueAt(row, 2).toString();
+                            String pensionado = model.getValueAt(row, 3).toString();
+                            String rfc = model.getValueAt(row, 4).toString();
+                            String correo = model.getValueAt(row, 5).toString();
+
+                            new ClienteSeleccionado(refrescable, nombre, telefono, curp, rfc, correo, pensionado);
+
+
+                        }
+                    }
+                }
+            });
+
+
         }//FIN CONSTRUCTOR
 
         public void configurarTabla() {
             String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "Correo"};
-            DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+
+            DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+
             tblClientes.setModel(modelo);
         } //FIN CONFIGURAR TABLA
+
 
         public void cargarClientesDesdeBD() {
             String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, correo FROM Clientes";
@@ -117,4 +152,8 @@
             sorter.setRowFilter(filtroFinal);
         }
 
+        @Override
+        public void refrescarDatos() {
+            cargarClientesDesdeBD();
+        }
     }//FIN CLASE SELECCIONAR CLIENTE
