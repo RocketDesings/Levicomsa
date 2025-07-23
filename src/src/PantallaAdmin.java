@@ -24,7 +24,7 @@ public class PantallaAdmin implements Refrescable {
     private JButton button1;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
-    private JButton button2;
+    private JButton btnEliminar;
 
     public PantallaAdmin() {
         pantalla = new JFrame("Pantalla Admin");
@@ -42,7 +42,7 @@ public class PantallaAdmin implements Refrescable {
             pantalla.setVisible(false);
             new FormularioAgregarCliente(this);
         });
-        button2.addActionListener(e -> {
+        btnEliminar.addActionListener(e -> {
             new SeleccionarCliente();
         });
         btnSalir.addActionListener(e -> System.exit(0));
