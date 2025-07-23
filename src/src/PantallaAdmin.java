@@ -41,7 +41,7 @@ public class PantallaAdmin implements Refrescable {
         cargarClientesDesdeBD();
 
         // Inicia autoactualización cada 30 segundos
-        autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 30000);
+        autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 5000);
         autoActualizador.iniciar();
 
         btnAgregarCliente.addActionListener(e -> {
