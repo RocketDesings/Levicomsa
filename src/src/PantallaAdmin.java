@@ -24,6 +24,7 @@ public class PantallaAdmin {
     private JButton button1;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
+    private JButton button2;
 
     public PantallaAdmin() {
         pantalla = new JFrame("Pantalla Admin");
