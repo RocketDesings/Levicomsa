@@ -1,11 +1,13 @@
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class PantallaAsesor {
-    private JFrame pantalla; // atributo
+    private JFrame pantalla;
     private JPanel panelMain;
-    private JTable table1;
+    private JTable tblAsesor;
     private JButton btnAgregarCliente;
     private JButton btnModificarCliente;
     private JButton btnCobrar;
@@ -22,21 +24,27 @@ public class PantallaAsesor {
     private JButton button1;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
+    private JTable tblASesor;
 
     public PantallaAsesor() {
-        //btnAgregarCliente.addActionListener(e -> agregarCliente());
-        //btnModificarCliente.addActionListener(e -> modificarCliente());
-        //btnCobrar.addActionListener(e -> cobrar());
         btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
-        pantalla = new JFrame("Pantalla Asesor"); // Usa el atributo, no declares una nueva variable
+
+        pantalla = new JFrame("Pantalla Asesor");
         pantalla.setUndecorated(true);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         pantalla.pack();
-        pantalla.setLocationRelativeTo(null); // Centra la ventana
+        pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
-        iniciarReloj();
 
+        iniciarReloj();
+        configurarTabla();
+        cargarClientesDesdeBD();
+
+        btnAgregarCliente.addActionListener(e -> {
+            pantalla.setVisible(false);
+            new FormularioAgregarCliente(this);
+        });
     }
 
     private void iniciarReloj() {
@@ -47,8 +55,49 @@ public class PantallaAsesor {
         });
         timer.start();
     }
+
     private void mostrarAlertaCerrarSesion() {
         AlertaCerrarSesion alerta = new AlertaCerrarSesion(pantalla);
     }
 
+    public void configurarTabla() {
+        // Quitamos id_cliente de columnas
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "pensionado", "RFC", "correo"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        tblAsesor.setModel(modelo);
+    }
+
+    public void mostrar() {
+        pantalla.setVisible(true);
+        cargarClientesDesdeBD();  // Refrescar datos al mostrar la ventana
+    }
+
+    public void cargarClientesDesdeBD() {
+        String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, correo FROM Clientes";
+
+        try (Connection conn = JDBC.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            DefaultTableModel modelo = (DefaultTableModel) tblAsesor.getModel();
+
+            modelo.setRowCount(0); // Limpiar tabla
+
+            while (rs.next()) {
+                String nombre = rs.getString("nombre");
+                String telefono = rs.getString("telefono");
+                String curp = rs.getString("CURP");
+                boolean pensionadoBool = rs.getBoolean("pensionado");
+                String pensionado = pensionadoBool ? "Sí" : "No";
+                String rfc = rs.getString("RFC");
+                String correo = rs.getString("correo");
+
+                Object[] fila = {nombre, telefono, curp, pensionado, rfc, correo};
+                modelo.addRow(fila);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

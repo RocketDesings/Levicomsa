@@ -99,9 +99,11 @@
             <properties/>
             <border type="none"/>
             <children>
-              <component id="36f46" class="javax.swing.JTable" binding="table1" default-binding="true">
+              <component id="36f46" class="javax.swing.JTable" binding="tblAsesor">
                 <constraints/>
-                <properties/>
+                <properties>
+                  <rowSelectionAllowed value="true"/>
+                </properties>
               </component>
             </children>
           </scrollpane>
