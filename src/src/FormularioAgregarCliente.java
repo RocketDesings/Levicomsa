@@ -13,9 +13,10 @@ public class FormularioAgregarCliente extends JFrame {
     private JTextField txtCorreo;
     public JButton btnAgregar;
     public JButton btnCancelar;
-    private PantallaAsesor pantallaPrincipal;
+    private JFrame pantallaPrincipal; // Puede ser asesor o admin
 
-    public FormularioAgregarCliente(PantallaAsesor pantallaPrincipal) {
+    // Constructor genérico
+    public FormularioAgregarCliente(JFrame pantallaPrincipal) {
         this.pantallaPrincipal = pantallaPrincipal;
 
         setTitle("Agregar Cliente");
@@ -25,13 +26,11 @@ public class FormularioAgregarCliente extends JFrame {
         setLocationRelativeTo(null);
         setVisible(true);
 
-        btnAgregar.addActionListener(e -> {
-            agregarCliente();
-        });
+        btnAgregar.addActionListener(e -> agregarCliente());
 
         btnCancelar.addActionListener(e -> {
             dispose();
-            pantallaPrincipal.mostrar();
+            pantallaPrincipal.setVisible(true); // Mostrar pantalla anterior
         });
     }
 
@@ -53,7 +52,6 @@ public class FormularioAgregarCliente extends JFrame {
             return;
         }
 
-
         String sql = "INSERT INTO Clientes (nombre, telefono, CURP, pensionado, RFC, correo) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = JDBC.obtenerConexion();
@@ -71,7 +69,7 @@ public class FormularioAgregarCliente extends JFrame {
             if (resultado > 0) {
                 JOptionPane.showMessageDialog(this, "Cliente agregado correctamente.");
                 dispose();
-                pantallaPrincipal.mostrar();
+                pantallaPrincipal.setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Error al agregar cliente.");
             }

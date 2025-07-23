@@ -1,26 +1,98 @@
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class PantallaAdmin {
+    private JFrame pantalla;
     private JPanel panelMain;
-    private JLabel lblImagen;
-    private JLabel lblNombre;
-    private JPanel panelInfo;
-    private JLabel lblTitulo;
-    private JLabel lblSlogan;
-    private JLabel lblIcono;
-    private JLabel lblSucursal;
-    private JLabel lblHora;
     private JTable table1;
-    private JPanel panelBusqueda;
-    private JComboBox comboBox1;
-    private JButton button1;
-    private JPanel panelBotones;
     private JButton btnAgregarCliente;
     private JButton btnModificarCliente;
     private JButton btnCobrar;
     private JButton btnSalir;
+    private JLabel lblHora;
+    private JLabel lblImagen;
+    private JLabel lblNombre;
+    private JLabel lblTitulo;
+    private JLabel lblSlogan;
+    private JLabel lblIcono;
+    private JLabel lblSucursal;
+    private JPanel panelInfo;
+    private JComboBox comboBox1;
+    private JButton button1;
+    private JPanel panelBotones;
+    private JPanel panelBusqueda;
 
     public PantallaAdmin() {
-        System.out.println("Pantalla de administrador creada correctamente.");
+        pantalla = new JFrame("Pantalla Admin");
+        pantalla.setContentPane(panelMain);
+        pantalla.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        pantalla.pack();
+        pantalla.setLocationRelativeTo(null);
+        pantalla.setVisible(true);
+
+        iniciarReloj();
+        configurarTabla();
+        cargarClientesDesdeBD();
+
+        btnAgregarCliente.addActionListener(e -> {
+            pantalla.setVisible(false);
+            new FormularioAgregarCliente(pantalla);
+        });
+
+        btnSalir.addActionListener(e -> {
+            // Aquí puedes manejar cierre de sesión o salir de la app
+            System.exit(0);
+        });
+    }
+
+    private void iniciarReloj() {
+        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        Timer timer = new Timer(1000, e -> {
+            String horaActual = formato.format(new Date());
+            lblHora.setText(horaActual);
+        });
+        timer.start();
+    }
+
+    public void configurarTabla() {
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "Correo"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        table1.setModel(modelo);
+    }
+
+    public void cargarClientesDesdeBD() {
+        String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, correo FROM Clientes";
+
+        try (Connection conn = JDBC.obtenerConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            DefaultTableModel modelo = (DefaultTableModel) table1.getModel();
+            modelo.setRowCount(0);
+
+            while (rs.next()) {
+                String nombre = rs.getString("nombre");
+                String telefono = rs.getString("telefono");
+                String curp = rs.getString("CURP");
+                boolean pensionadoBool = rs.getBoolean("pensionado");
+                String pensionado = pensionadoBool ? "Sí" : "No";
+                String rfc = rs.getString("RFC");
+                String correo = rs.getString("correo");
+
+                Object[] fila = {nombre, telefono, curp, pensionado, rfc, correo};
+                modelo.addRow(fila);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void mostrar() {
+        pantalla.setVisible(true);
+        cargarClientesDesdeBD();
     }
 }

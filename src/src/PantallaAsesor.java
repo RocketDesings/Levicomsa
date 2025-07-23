@@ -24,7 +24,6 @@ public class PantallaAsesor {
     private JButton button1;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
-    private JTable tblASesor;
 
     public PantallaAsesor() {
         btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
@@ -43,8 +42,10 @@ public class PantallaAsesor {
 
         btnAgregarCliente.addActionListener(e -> {
             pantalla.setVisible(false);
-            new FormularioAgregarCliente(this);
+            new FormularioAgregarCliente(pantalla);
         });
+
+
     }
 
     private void iniciarReloj() {
@@ -61,15 +62,14 @@ public class PantallaAsesor {
     }
 
     public void configurarTabla() {
-        // Quitamos id_cliente de columnas
-        String[] columnas = {"Nombre", "Teléfono", "CURP", "pensionado", "RFC", "correo"};
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "Correo"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
         tblAsesor.setModel(modelo);
     }
 
     public void mostrar() {
         pantalla.setVisible(true);
-        cargarClientesDesdeBD();  // Refrescar datos al mostrar la ventana
+        cargarClientesDesdeBD();
     }
 
     public void cargarClientesDesdeBD() {
@@ -80,7 +80,6 @@ public class PantallaAsesor {
              ResultSet rs = ps.executeQuery()) {
 
             DefaultTableModel modelo = (DefaultTableModel) tblAsesor.getModel();
-
             modelo.setRowCount(0); // Limpiar tabla
 
             while (rs.next()) {
