@@ -17,6 +17,7 @@
         private JButton btnBuscarRFC;
         private JButton btnBuscarCurp;
         private JTextField txtCURP;
+        private JButton btnCancelar;
 
         public SeleccionarCliente() {
             // btnBuscarRFC.addActionListener(e -> buscarPorRFC());
@@ -33,6 +34,7 @@
             configurarTabla();
             cargarClientesDesdeBD();
 
+            btnCancelar.addActionListener(e -> frame.dispose());
 
             txtRFC.getDocument().addDocumentListener(new DocumentListener() {
                 public void insertUpdate(DocumentEvent e) {

@@ -21,7 +21,7 @@ public class PantallaAsesor {
     private JLabel lblSlogan;
     private JLabel lblSucursal;
     private JComboBox comboBox1;
-    private JButton button1;
+    private JButton buscarButton;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
 
