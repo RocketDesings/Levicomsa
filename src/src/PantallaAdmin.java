@@ -53,8 +53,8 @@ public class PantallaAdmin implements Refrescable {
         });
 
         btnSalir.addActionListener(e -> {
+            mostrarAlertaCerrarSesion(); // Suponiendo que ya se muestra en el constructor
             autoActualizador.detener(); // Detiene el hilo si cierra
-            System.exit(0);
         });
     }
 
@@ -110,5 +110,9 @@ public class PantallaAdmin implements Refrescable {
     public void refrescarDatos() {
         cargarClientesDesdeBD();
         pantalla.setVisible(true);
+    }
+
+    private void mostrarAlertaCerrarSesion() {
+        AlertaCerrarSesion alerta = new AlertaCerrarSesion(pantalla);
     }
 }
