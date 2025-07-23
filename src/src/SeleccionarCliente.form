@@ -37,7 +37,7 @@
         </constraints>
         <properties>
           <horizontalAlignment value="10"/>
-          <text value="Seleccione el cliente a modificar para continuar"/>
+          <text value="Seleccione el un cliente para continuar"/>
         </properties>
       </component>
       <grid id="a23a0" layout-manager="GridLayoutManager" row-count="1" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
