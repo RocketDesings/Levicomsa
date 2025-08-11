@@ -4,15 +4,13 @@ import java.sql.SQLException;
 
 public class JDBC {
     // Cambia estos datos por los de tu base de datos
-    private static final String URL = "jdbc:mysql://sql5.freesqldatabase.com:3306/sql5790899";
-    private static final String USUARIO = "sql5790899";
-    private static final String CONTRASEÑA = "lmKXGpcVx4"; // <-- cámbialo por tu contraseña real
+    private static final String URL = "jdbc:mysql://mysql-rocketdesigners.alwaysdata.net:3306/rocketdesigners_levicomsa"; // Ajusta el nombre de la BD
+    private static final String USUARIO = "426036";
+    private static final String CONTRASEÑA = "Hola1243"; // <-- cámbiala por tu contraseña real
 
     public static Connection obtenerConexion() {
         try {
-            // Cargar el driver (opcional en versiones nuevas de Java, pero recomendable)
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            // Establecer la conexión
+            Class.forName("com.mysql.cj.jdbc.Driver"); // cargar driver
             return DriverManager.getConnection(URL, USUARIO, CONTRASEÑA);
         } catch (ClassNotFoundException e) {
             System.out.println("Error: No se encontró el driver de MySQL.");
@@ -24,4 +22,20 @@ public class JDBC {
         return null;
     }
 }
-
+/*
+    // Metodo para probar la conexión
+    public static void main(String[] args) {
+        Connection conn = obtenerConexion();
+        if (conn != null) {
+            System.out.println("¡Conexión exitosa a la base de datos!");
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("Fallo la conexión.");
+        }
+    }
+}
+*/
