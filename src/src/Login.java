@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -10,6 +11,9 @@ public class Login {
     private JTextField txtContrasena;
     private JButton btnIniciarSesion;
     private JButton btnSalir;
+    private JPanel panelLogo;
+    private JPanel panelInfo;
+    private JLabel lblLogo;
 
     public Login() {
         // Inicializar el JFrame
@@ -22,11 +26,21 @@ public class Login {
         loginFrame.setVisible(true);
         mainPanel.requestFocusInWindow();
 
+        // Cambia la ruta a donde tengas la imagen
+        ImageIcon icono = new ImageIcon("src/images/logo.png");
+
+        // Si quieres que se ajuste a un tamaño específico (ejemplo 200x200 px):
+        Image imagenEscalada = icono.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
+        lblLogo.setIcon(new ImageIcon(imagenEscalada));
+
+        // Panel logo
+        panelLogo.setBorder(new MatteBorder(0, 0, 0, 2, Color.BLACK));
         // Configurar el placeholder para txtUsuario
         setPlaceholder(txtUsuario, "Usuario");
 
         // Configurar el placeholder para txtContrasena
         setPlaceholder(txtContrasena, "Contraseña");
+
 
         // Acciones de los botones
         btnIniciarSesion.addActionListener(e -> {
