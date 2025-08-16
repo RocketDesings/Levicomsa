@@ -1,5 +1,7 @@
 import javax.swing.*;
+import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
+import java.awt.*;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -24,6 +26,7 @@ public class PantallaAsesor implements Refrescable {
     private JButton buscarButton;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
+    private JPanel panelExtra;
 
     private AutoActualizarTabla autoActualizador;
 
@@ -37,6 +40,14 @@ public class PantallaAsesor implements Refrescable {
         pantalla.pack();
         pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
+        ImageIcon icono = new ImageIcon("src/images/logo.png");
+
+        // Si quieres que se ajuste a un tamaño específico (ejemplo 200x200 px):
+        Image imagenEscalada = icono.getImage().getScaledInstance(150, 150, Image.SCALE_SMOOTH);
+        lblIcono.setIcon(new ImageIcon(imagenEscalada));
+
+        panelInfo.setBorder(new MatteBorder(0,2,2,0, Color.BLACK));
+        panelExtra.setBorder(new MatteBorder(0,0,2,0, Color.BLACK));
 
         iniciarReloj();
         configurarTabla();
