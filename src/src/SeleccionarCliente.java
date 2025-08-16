@@ -20,9 +20,6 @@
         private JButton btnCancelar;
 
         public SeleccionarCliente() {
-            // btnBuscarRFC.addActionListener(e -> buscarPorRFC());
-            // btnBuscarCurp.addActionListener(e -> buscarPorCURP());
-
             JFrame frame = new JFrame("Seleccionar Cliente");
             frame.setUndecorated(true);
             frame.setContentPane(panel1);

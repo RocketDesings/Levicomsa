@@ -69,17 +69,20 @@ public class Login {
                     case 3:
                         new PantallaAsesor();
                         break;
-                    case 1:
+                    case 2:
                         new pantallaCajero();
                         break;
-                    case 2:
+                    case 1:
+                        new PantallaAdmin();
+                        break;
+                    case 4:
                         new PantallaAdmin();
                         break;
                     default:
                         JOptionPane.showMessageDialog(null, "Rol desconocido.");
                 }
             } else {
-                JOptionPane.showMessageDialog(null, "Usuario o contraseña incorrectos ❌");
+                JOptionPane.showMessageDialog(null, "Usuario o contraseña incorrectos");
             }
         });
     }

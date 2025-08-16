@@ -48,6 +48,10 @@ public class PantallaAdmin implements Refrescable {
             new FormularioAgregarCliente(this);
         });
 
+        btnModificarCliente.addActionListener(e -> {
+            new SeleccionarCliente2();
+        });
+
         btnEliminar.addActionListener(e -> {
             new SeleccionarCliente();
         });
