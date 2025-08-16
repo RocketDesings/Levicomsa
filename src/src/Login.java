@@ -41,7 +41,6 @@ public class Login {
         // Configurar el placeholder para txtContrasena
         setPlaceholder(txtContrasena, "Contraseña");
 
-
         // Acciones de los botones
         btnIniciarSesion.addActionListener(e -> {
             System.out.println("Bienvenido @a Redirigiendo...");
