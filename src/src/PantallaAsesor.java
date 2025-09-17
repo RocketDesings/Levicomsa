@@ -106,10 +106,6 @@ public class PantallaAsesor implements Refrescable {
         pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
 
-        // Logo circular desde resources con fallback
-        setLogo();
-        setLblImagen();
-
         // Acciones
         btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
         btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
@@ -125,6 +121,26 @@ public class PantallaAsesor implements Refrescable {
         autoActualizador.iniciar();
 
         SwingUtilities.invokeLater(() -> tfBuscar.requestFocusInWindow());
+
+        // ---------- LOGO ----------
+        ImageIcon icono = null;
+        try {
+            URL link = getClass().getResource("/images/levicomsa.png"); // <— en resources/images/
+            if (link != null) icono = new ImageIcon(link);
+        } catch (Exception ignored) {}
+        if (icono == null) icono = new ImageIcon("resources/images/levicomsa.png"); // fallback en dev
+        Image imagenEscalada = icono.getImage().getScaledInstance(280, 280, Image.SCALE_SMOOTH);
+        if (lblIcono != null) lblIcono.setIcon(new ImageIcon(imagenEscalada));
+
+        // ---------- LOGO ----------
+        ImageIcon icono2 = null;
+        try {
+            URL url2 = getClass().getResource("/images/usuario.png"); // <— en resources/images/
+            if (url2 != null) icono2 = new ImageIcon(url2);
+        } catch (Exception ignored) {}
+        if (icono2 == null) icono2 = new ImageIcon("resources/images/usuario.png"); // fallback en dev
+        Image imagenEscalada2 = icono2.getImage().getScaledInstance(280, 280, Image.SCALE_SMOOTH);
+        if (lblImagen != null) lblImagen.setIcon(new ImageIcon(imagenEscalada2));
     }
 
     // ========= THEME / ESTILO =========
@@ -169,19 +185,6 @@ public class PantallaAsesor implements Refrescable {
         c.setBorder(BorderFactory.createCompoundBorder(
                 new MatteBorder(1,1,1,1, BORDER_SOFT),
                 new EmptyBorder(12,12,12,12)
-        ));
-    }
-
-    private void setLogo() {
-        ImageIcon icon = new ImageIcon("resources/images/levicomsa.png");
-        lblIcono.setIcon(new ImageIcon(
-                icon.getImage().getScaledInstance(128, 128, Image.SCALE_SMOOTH)
-        ));
-    }
-    private void setLblImagen() {
-        ImageIcon icon = new ImageIcon("resources/images/usuario.png");
-        lblImagen.setIcon(new ImageIcon(
-                icon.getImage().getScaledInstance(128, 128, Image.SCALE_SMOOTH)
         ));
     }
 
