@@ -1,4 +1,4 @@
-import javax.swing.JTextField;
+import javax.swing.*;
 import java.util.regex.Pattern;
 
 public class ValidarJTextField {

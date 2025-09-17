@@ -1,15 +1,15 @@
-    import javax.swing.*;
-    import javax.swing.event.DocumentEvent;
-    import javax.swing.event.DocumentListener;
-    import javax.swing.table.DefaultTableModel;
-    import javax.swing.table.TableRowSorter;
-    import java.awt.event.MouseAdapter;
-    import java.sql.Connection;
-    import java.sql.PreparedStatement;
-    import java.sql.ResultSet;
-    import java.sql.SQLException;
-    import java.util.ArrayList;
-    import java.util.List;
+import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+import java.awt.event.MouseAdapter;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
     public class SeleccionarCliente implements Refrescable{
         private Refrescable refrescable;
