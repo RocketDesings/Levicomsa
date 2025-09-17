@@ -66,6 +66,7 @@ public class PantallaAdmin implements Refrescable {
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
+
         // pantalla completa (no exclusiva → no “minimiza” al abrir UI propia)
         pantalla.setExtendedState(JFrame.MAXIMIZED_BOTH);
         pantalla.setResizable(true);
@@ -104,6 +105,8 @@ public class PantallaAdmin implements Refrescable {
         if (btnSalir != null) btnSalir.addActionListener(e -> mostrarAlertaCerrarSesion());
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
+        if (btnEliminar != null) btnEliminar.addActionListener(e -> eliminarCliente());
+
         // si tienes un botón de eliminar/cobrar, conéctalo igual
 
         iniciarReloj();
@@ -307,6 +310,35 @@ public class PantallaAdmin implements Refrescable {
         } catch (Exception ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(pantalla, "No se pudo abrir la selección: " + ex.getMessage());
+        }
+    }
+    private void eliminarCliente() {
+        int fila = table1.getSelectedRow();
+        if (fila == -1) {
+            JOptionPane.showMessageDialog(pantalla, "Selecciona un cliente para eliminar.");
+            return;
+        }
+
+        String nombre = table1.getValueAt(fila, 0).toString();
+        int confirm = JOptionPane.showConfirmDialog(pantalla, "¿Seguro que deseas eliminar a " + nombre + "?", "Confirmar eliminación", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        String curp = table1.getValueAt(fila, 2).toString(); // Asumiendo que CURP es único
+        final String sql = "DELETE FROM Clientes WHERE CURP = ?";
+
+        try (Connection conn = DB.get();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, curp);
+            int afectados = ps.executeUpdate();
+            if (afectados > 0) {
+                JOptionPane.showMessageDialog(pantalla, "Cliente eliminado correctamente.");
+                cargarClientesDesdeBD();
+            } else {
+                JOptionPane.showMessageDialog(pantalla, "No se pudo eliminar el cliente.");
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(pantalla, "Error al eliminar cliente: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
