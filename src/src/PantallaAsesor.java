@@ -34,7 +34,6 @@ public class PantallaAsesor implements Refrescable {
     private JLabel lblSlogan;
     private JLabel lblSucursal;
     private JComboBox comboBox1;
-    private JButton buscarButton;
     private JPanel panelBotones;
     private JPanel panelBusqueda;
     private JPanel panelExtra;
@@ -160,7 +159,7 @@ public class PantallaAsesor implements Refrescable {
         });
 
         // botón Buscar
-        buscarButton.addActionListener(e -> aplicarFiltro(tfBuscar.getText().trim()));
+        tfBuscar.addActionListener(e -> aplicarFiltro(tfBuscar.getText().trim()));
     }
 
     private void setPlaceholder(JTextField tf, String texto){
