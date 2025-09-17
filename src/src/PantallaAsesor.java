@@ -39,6 +39,7 @@ public class PantallaAsesor implements Refrescable {
     private JPanel panelBusqueda;
     private JPanel panelExtra;
     private JTextField tfBuscar; // <- ya lo tienes en tu panel
+    private JLabel lblPlaceholder;
 
     // --- comportamiento ---
     private AutoActualizarTabla autoActualizador;
