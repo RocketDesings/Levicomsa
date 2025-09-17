@@ -62,7 +62,7 @@ public class Login {
         loginFrame.setLocationRelativeTo(null);
         loginFrame.setVisible(true);
 
-        UiImages.setIcon(lblLogo, "/images/levicomsa.png", 200);
+        UiImages.setIcon(lblLogo, "/images/levicomsa.png", 250);
 
         // ---------- PANELES ----------
         if (panelLogo != null) {
