@@ -143,9 +143,6 @@ public class PantallaAsesor implements Refrescable {
 
     /** Conecta tfBuscar y buscarButton al filtro del TableRowSorter. */
     private void cablearBusquedaInline() {
-        // placeholder suave
-        setPlaceholder(tfBuscar, "Buscar por nombre, teléfono, CURP, RFC o correo…");
-
         // filtrar mientras escribe
         tfBuscar.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e)  { aplicarFiltro(tfBuscar.getText().trim()); }
