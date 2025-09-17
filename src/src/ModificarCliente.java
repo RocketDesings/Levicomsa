@@ -5,6 +5,7 @@ import java.sql.SQLException;
 
 public class ModificarCliente {
     private Refrescable refrescable;
+    private int usuarioId;
     private JPanel panel1;
     private JTextField txtNombre;
     private JTextField txtTelefono;
@@ -18,10 +19,10 @@ public class ModificarCliente {
 
     private String rfcOriginal; // Para identificar al cliente en la BD
 
-    public ModificarCliente(Refrescable refrescable, String nombre, String telefono, String curp, String rfc, String correo, String pensionado) {
+    public ModificarCliente(Refrescable refrescable, String nombre, String telefono, String curp, String rfc, String correo, String pensionado, int usuarioId) {
         this.refrescable = refrescable;
         this.rfcOriginal = rfc;
-
+        this.usuarioId = usuarioId;
         cmbPensionado.addItem("Sí");
         cmbPensionado.addItem("No");
 

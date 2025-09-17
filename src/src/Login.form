@@ -7,8 +7,8 @@
     </constraints>
     <properties>
       <background color="-852737"/>
-      <maximumSize width="900" height="500"/>
-      <minimumSize width="900" height="500"/>
+      <maximumSize width="700" height="300"/>
+      <minimumSize width="700" height="300"/>
       <name value=""/>
       <preferredSize width="900" height="500"/>
       <requestFocusEnabled value="true"/>

@@ -1,8 +1,6 @@
 public class Main {
     public static void main(String[] args) {
-
-        Login log = new Login();
-        //PantallaAsesor p = new PantallaAsesor();
-        System.out.println("El programa ha iniciado correctamente.");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> { try { DB.close(); } catch (Throwable ignore) {} }, "DB-ShutdownHook"));
+        javax.swing.SwingUtilities.invokeLater(Login::new);
     }
 }

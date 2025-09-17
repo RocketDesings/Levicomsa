@@ -4,6 +4,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class FormularioAgregarCliente extends JFrame {
+    private int usuarioId;
     public JPanel mainPanel;
     private JTextField txtNombre;
     private JTextField txtTelefono;
@@ -16,9 +17,9 @@ public class FormularioAgregarCliente extends JFrame {
 
     private Refrescable pantallaPrincipal;
 
-    public FormularioAgregarCliente(Refrescable pantallaPrincipal) {
+    public FormularioAgregarCliente(Refrescable pantallaPrincipal, int usuarioId) {
         this.pantallaPrincipal = pantallaPrincipal;
-
+        this.usuarioId = usuarioId;
         setTitle("Agregar Cliente");
         setContentPane(mainPanel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
