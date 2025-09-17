@@ -129,7 +129,7 @@ public class PantallaAsesor implements Refrescable {
             if (link != null) icono = new ImageIcon(link);
         } catch (Exception ignored) {}
         if (icono == null) icono = new ImageIcon("resources/images/levicomsa.png"); // fallback en dev
-        Image imagenEscalada = icono.getImage().getScaledInstance(280, 280, Image.SCALE_SMOOTH);
+        Image imagenEscalada = icono.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
         if (lblIcono != null) lblIcono.setIcon(new ImageIcon(imagenEscalada));
 
         // ---------- LOGO ----------
@@ -139,8 +139,10 @@ public class PantallaAsesor implements Refrescable {
             if (url2 != null) icono2 = new ImageIcon(url2);
         } catch (Exception ignored) {}
         if (icono2 == null) icono2 = new ImageIcon("resources/images/usuario.png"); // fallback en dev
-        Image imagenEscalada2 = icono2.getImage().getScaledInstance(280, 280, Image.SCALE_SMOOTH);
+        Image imagenEscalada2 = icono2.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
         if (lblImagen != null) lblImagen.setIcon(new ImageIcon(imagenEscalada2));
+
+
     }
 
     // ========= THEME / ESTILO =========

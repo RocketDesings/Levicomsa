@@ -23,20 +23,20 @@
         <properties/>
         <border type="none"/>
         <children>
-          <component id="47755" class="javax.swing.JLabel" binding="lblImagen">
-            <constraints>
-              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
-            </constraints>
-            <properties>
-              <text value=""/>
-            </properties>
-          </component>
           <component id="7a597" class="javax.swing.JLabel" binding="lblNombre">
             <constraints>
               <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties>
               <text value="Label"/>
+            </properties>
+          </component>
+          <component id="47755" class="javax.swing.JLabel" binding="lblImagen">
+            <constraints>
+              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="2" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value=""/>
             </properties>
           </component>
         </children>
@@ -69,15 +69,6 @@
               <text value=""/>
             </properties>
           </component>
-          <component id="ba451" class="javax.swing.JLabel" binding="lblIcono">
-            <constraints>
-              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
-            </constraints>
-            <properties>
-              <horizontalTextPosition value="11"/>
-              <text value=""/>
-            </properties>
-          </component>
           <component id="ecdc4" class="javax.swing.JLabel" binding="lblSucursal">
             <constraints>
               <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
@@ -88,11 +79,20 @@
           </component>
           <component id="94b21" class="javax.swing.JLabel" binding="lblHora">
             <constraints>
-              <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+              <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="1" fill="0" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties>
               <font name="Segoe UI" size="22"/>
               <text value="Cargando Hora..."/>
+            </properties>
+          </component>
+          <component id="ba451" class="javax.swing.JLabel" binding="lblIcono">
+            <constraints>
+              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="2" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <horizontalTextPosition value="11"/>
+              <text value=""/>
             </properties>
           </component>
         </children>
