@@ -239,6 +239,7 @@ public class PantallaAsesor implements Refrescable {
 
             try (ResultSet rs = ps.executeQuery()) {
                 DefaultTableModel modelo = (DefaultTableModel) tblAsesor.getModel();
+                tblAsesor.getTableHeader().setReorderingAllowed(false);
                 modelo.setRowCount(0);
 
                 while (rs.next()) {
