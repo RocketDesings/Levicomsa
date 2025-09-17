@@ -64,7 +64,9 @@
             </constraints>
             <properties>
               <font name="Segoe UI" size="22"/>
-              <text value="Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de tus necesidades."/>
+              <opaque value="true"/>
+              <requestFocusEnabled value="false"/>
+              <text value=""/>
             </properties>
           </component>
           <component id="ba451" class="javax.swing.JLabel" binding="lblIcono">

@@ -107,7 +107,8 @@ public class PantallaAsesor implements Refrescable {
         pantalla.setVisible(true);
 
         // Logo circular desde resources con fallback
-        setLogo();
+
+
 
         // Acciones
         btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
@@ -134,11 +135,14 @@ public class PantallaAsesor implements Refrescable {
         // Tipografías
         Font h1 = new Font("Segoe UI", Font.BOLD, 24);
         Font h2 = new Font("Segoe UI", Font.PLAIN, 14);
-        if (lblTitulo   != null) lblTitulo.setFont(h1);
+        lblSlogan.setText("<html>Comprometidos con tu tranquilidad,<br>ofreciéndote soluciones a la medida de tus necesidades.</html>");
+        if (lblTitulo   != null) lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 70));
         if (lblTitulo   != null) lblTitulo.setForeground(TEXT_PRIMARY);
         if (lblNombre   != null) lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        if (lblSucursal != null) lblSucursal.setFont(h2);
+        if (lblSucursal != null) lblSucursal.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        if (lblSlogan   != null) lblSlogan.setFont(new Font("Segoe UI", Font.BOLD, 30));
         if (lblSlogan   != null) lblSlogan.setForeground(TEXT_MUTED);
+        if (lblNombre   != null) lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 15));
 
         // Botones
         stylePrimaryButton(btnAgregarCliente);      // verde sólido
@@ -168,27 +172,8 @@ public class PantallaAsesor implements Refrescable {
         ));
     }
 
-    private void setLogo() {
-        try {
-            ImageIcon icono = null;
-            URL url = getClass().getResource("/images/levicomsa.png");
-            if (url != null) icono = new ImageIcon(url);
-            if (icono == null) {
-                icono = new ImageIcon("resources/images/levicomsa.png");
-                if (icono.getImageLoadStatus() != MediaTracker.COMPLETE)
-                    icono = new ImageIcon("src/images/levicomsa.png");
-            }
-            Image img = icono.getImage().getScaledInstance(128, 128, Image.SCALE_SMOOTH);
 
-            // círculo con borde suave
-            int size = 140;
-            BufferedImagePanel circle = new BufferedImagePanel(new Dimension(size,size), img, 64);
-            if (lblIcono != null) {
-                lblIcono.setText("");
-                lblIcono.setIcon(circle.asIcon());
-            }
-        } catch (Exception ignored) {}
-    }
+
 
     // ========= RELOJ =========
     private void iniciarReloj() {

@@ -40,6 +40,7 @@ public class PantallaAdmin implements Refrescable {
     private JLabel lblSucursal;
     private JPanel panelBusqueda;
     private JTextField tfBuscar;
+    private JButton btnBitacora;
     private JButton buscarButton;
 
     // ====== comportamiento ======
@@ -106,6 +107,7 @@ public class PantallaAdmin implements Refrescable {
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
         if (btnEliminar != null) btnEliminar.addActionListener(e -> eliminarCliente());
+        if (btnBitacora != null) btnBitacora.addActionListener(e -> mostrarBitacora());
 
         // si tienes un botón de eliminar/cobrar, conéctalo igual
 
@@ -340,6 +342,42 @@ public class PantallaAdmin implements Refrescable {
             JOptionPane.showMessageDialog(pantalla, "Error al eliminar cliente: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    private void mostrarBitacora() {
+        JFrame frame = new JFrame("Bitácora");
+        JTable tabla = new JTable();
+        JScrollPane scroll = new JScrollPane(tabla);
+        frame.add(scroll);
+
+        try (Connection conn = DB.get();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM bitacora");
+             ResultSet rs = ps.executeQuery()) {
+
+            // Obtiene nombres de columnas
+            int cols = rs.getMetaData().getColumnCount();
+            String[] colNames = new String[cols];
+            for (int i = 0; i < cols; i++) {
+                colNames[i] = rs.getMetaData().getColumnName(i + 1);
+            }
+
+            // Llena los datos
+            DefaultTableModel modelo = new DefaultTableModel(colNames, 0);
+            while (rs.next()) {
+                Object[] fila = new Object[cols];
+                for (int i = 0; i < cols; i++) {
+                    fila[i] = rs.getObject(i + 1);
+                }
+                modelo.addRow(fila);
+            }
+            tabla.setModel(modelo);
+
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(pantalla, "Error al cargar bitácora: " + ex.getMessage());
+        }
+
+        frame.setSize(800, 400);
+        frame.setLocationRelativeTo(pantalla);
+        frame.setVisible(true);
     }
 
     private void mostrarAlertaCerrarSesion() {
