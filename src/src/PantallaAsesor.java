@@ -107,8 +107,8 @@ public class PantallaAsesor implements Refrescable {
         pantalla.setVisible(true);
 
         // Logo circular desde resources con fallback
-
-
+        setLogo();
+        setLblImagen();
 
         // Acciones
         btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
@@ -172,8 +172,18 @@ public class PantallaAsesor implements Refrescable {
         ));
     }
 
-
-
+    private void setLogo() {
+        ImageIcon icon = new ImageIcon("resources/images/levicomsa.png");
+        lblIcono.setIcon(new ImageIcon(
+                icon.getImage().getScaledInstance(128, 128, Image.SCALE_SMOOTH)
+        ));
+    }
+    private void setLblImagen() {
+        ImageIcon icon = new ImageIcon("resources/images/usuario.png");
+        lblImagen.setIcon(new ImageIcon(
+                icon.getImage().getScaledInstance(128, 128, Image.SCALE_SMOOTH)
+        ));
+    }
 
     // ========= RELOJ =========
     private void iniciarReloj() {
