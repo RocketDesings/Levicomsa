@@ -13,5 +13,6 @@
       <entry name="!?*.aj" />
       <entry name="!?*.properties" />
     </wildcardResourcePatterns>
+    <bytecodeTargetLevel target="21" />
   </component>
 </project>

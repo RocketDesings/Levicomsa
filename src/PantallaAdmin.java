@@ -184,9 +184,9 @@ public class PantallaAdmin implements Refrescable {
     }
 
     private void configurarTabla() {
-        String[] cols = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "Correo"};
-        DefaultTableModel modelo = new DefaultTableModel(cols, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         table1.setModel(modelo);
         sorter = new TableRowSorter<>(modelo);
@@ -204,10 +204,11 @@ public class PantallaAdmin implements Refrescable {
         // Zebra + selección
         table1.setDefaultRenderer(Object.class, new ZebraRenderer());
 
-        int[] widths = {220, 140, 160, 110, 160, 260};
+        int[] widths = {220, 140, 160, 110, 160, 140, 260}; // NSS ~140
         for (int i = 0; i < Math.min(widths.length, table1.getColumnCount()); i++) {
             table1.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
+
     }
 
     private void cablearBusquedaInline() {
@@ -249,7 +250,7 @@ public class PantallaAdmin implements Refrescable {
         if (q == null || q.isBlank()) { sorter.setRowFilter(null); return; }
         String regex = "(?i)" + java.util.regex.Pattern.quote(q);
         List<RowFilter<Object,Object>> cols = new ArrayList<>();
-        for (int c = 0; c <= 5; c++) cols.add(RowFilter.regexFilter(regex, c));
+        for (int c = 0; c <= 6; c++) cols.add(RowFilter.regexFilter(regex, c));
         sorter.setRowFilter(RowFilter.orFilter(cols));
     }
 
@@ -288,13 +289,12 @@ public class PantallaAdmin implements Refrescable {
 
     // ====================== Datos de clientes ======================
     public void cargarClientesDesdeBD() {
-        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, correo FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
-        int limit = PAGE_SIZE, offset = currentOffset;
+        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo " +
+                "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
 
         try (Connection conn = DB.get();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            // (opcional) variable para bitácora si luego haces escrituras con ESTA conexión
             if (usuarioId > 0) {
                 try (PreparedStatement set = conn.prepareStatement("SET @app_user_id = ?")) {
                     set.setInt(1, usuarioId);
@@ -302,11 +302,12 @@ public class PantallaAdmin implements Refrescable {
                 }
             }
 
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
+            ps.setInt(1, PAGE_SIZE);
+            ps.setInt(2, currentOffset);
 
             try (ResultSet rs = ps.executeQuery()) {
                 DefaultTableModel modelo = (DefaultTableModel) table1.getModel();
+                table1.getTableHeader().setReorderingAllowed(false);
                 modelo.setRowCount(0);
 
                 while (rs.next()) {
@@ -315,11 +316,11 @@ public class PantallaAdmin implements Refrescable {
                     String curp       = rs.getString(3);
                     String pensionado = rs.getBoolean(4) ? "Sí" : "No";
                     String rfc        = rs.getString(5);
-                    String correo     = rs.getString(6);
-                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, correo});
+                    String nss        = rs.getString(6);   // <— NSS
+                    String correo     = rs.getString(7);
+                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
                 }
             }
-
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
             e.printStackTrace();

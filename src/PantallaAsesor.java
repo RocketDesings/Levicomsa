@@ -45,6 +45,7 @@ public class PantallaAsesor implements Refrescable {
     private JPanel panelBusqueda;
     private JPanel panelExtra;
     private JTextField tfBuscar;
+    private JPanel panelTabla;
 
     // ====== comportamiento ======
     private AutoActualizarTabla autoActualizador;
@@ -52,6 +53,7 @@ public class PantallaAsesor implements Refrescable {
 
     // ====== sesión ======
     private final int usuarioId;
+    private int sucursalId = -1;   // <— AÑADE ESTO
     private String nombreTrabajador;
     private String nombreSucursal;
 
@@ -76,10 +78,9 @@ public class PantallaAsesor implements Refrescable {
     public PantallaAsesor() { this(-1); }
     public PantallaAsesor(int usuarioId) {
         this.usuarioId = usuarioId;
-
         // ===== Frame =====
         pantalla = new JFrame("Pantalla Asesor");
-        pantalla.setUndecorated(true);
+        pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         UiImages.setIcon(lblIcono, "/images/levicomsa.png",150);
         UiImages.setIcon(lblImagen, "/images/usuario.png",100);
@@ -108,7 +109,6 @@ public class PantallaAsesor implements Refrescable {
 
         // Estilo general
         applyTheme();
-
         pantalla.pack();
         pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
@@ -116,6 +116,14 @@ public class PantallaAsesor implements Refrescable {
         // Acciones
         btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
         btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
+        btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
+        btnCobrar.addActionListener(e -> {
+            if (sucursalId <= 0) {
+                JOptionPane.showMessageDialog(pantalla, "No se detectó sucursal del usuario.");
+                return;
+            }
+            EnviarCobro.mostrar(sucursalId, usuarioId);
+        });
 
         iniciarReloj();
         configurarTabla();
@@ -143,7 +151,7 @@ public class PantallaAsesor implements Refrescable {
         if (lblTitulo   != null) lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 70));
         if (lblTitulo   != null) lblTitulo.setForeground(TEXT_PRIMARY);
         if (lblNombre   != null) lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        if (lblSucursal != null) lblSucursal.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        if (lblSucursal != null) lblSucursal.setFont(new Font("Segoe UI", Font.BOLD, 30));
         if (lblSlogan   != null) lblSlogan.setFont(new Font("Segoe UI", Font.BOLD, 30));
         if (lblSlogan   != null) lblSlogan.setForeground(TEXT_MUTED);
         if (lblNombre   != null) lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 15));
@@ -178,7 +186,7 @@ public class PantallaAsesor implements Refrescable {
 
     // ========= RELOJ =========
     private void iniciarReloj() {
-        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         Timer timer = new Timer(1000, e -> lblHora.setText(formato.format(new Date())));
         timer.start();
     }
@@ -219,13 +227,13 @@ public class PantallaAsesor implements Refrescable {
         if (q == null || q.isBlank()) { sorter.setRowFilter(null); return; }
         String regex = "(?i)" + java.util.regex.Pattern.quote(q);
         List<RowFilter<Object,Object>> cols = new ArrayList<>();
-        for (int c = 0; c <= 5; c++) cols.add(RowFilter.regexFilter(regex, c));
+        for (int c = 0; c <= 6; c++) cols.add(RowFilter.regexFilter(regex, c)); // antes era <=5
         sorter.setRowFilter(RowFilter.orFilter(cols));
     }
 
     // ========= TABLA =========
     private void configurarTabla() {
-        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "Correo"};
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
@@ -244,7 +252,7 @@ public class PantallaAsesor implements Refrescable {
         // Zebra + selección accesible
         tblAsesor.setDefaultRenderer(Object.class, new ZebraRenderer());
 
-        int[] widths = {220, 140, 160, 110, 160, 260};
+        int[] widths = {220, 140, 160, 110, 160, 140, 260}; // NSS ~140
         for (int i = 0; i < Math.min(widths.length, tblAsesor.getColumnCount()); i++) {
             tblAsesor.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
@@ -253,16 +261,22 @@ public class PantallaAsesor implements Refrescable {
 
     // ========= DATOS DEL ASESOR =========
     private void cargarDatosAsesor() {
-        if (usuarioId <= 0) { lblNombre.setText("Asesor"); lblSucursal.setText(""); return; }
+        if (usuarioId <= 0) {
+            lblNombre.setText("Asesor");
+            lblSucursal.setText("");
+            sucursalId = -1; // <— si no hay sesión, sin sucursal
+            return;
+        }
 
         final String sql = """
-            SELECT COALESCE(u.nombre, t.nombre) AS nombreTrabajador,
-                   s.nombre AS sucursal
-            FROM Usuarios u
-            LEFT JOIN trabajadores t ON t.id = u.trabajador_id
-            LEFT JOIN sucursales   s ON s.id = t.sucursal_id
-            WHERE u.id = ?
-            """;
+        SELECT COALESCE(u.nombre, t.nombre) AS nombreTrabajador,
+               s.nombre AS sucursal,
+               s.id     AS sucursal_id
+        FROM Usuarios u
+        LEFT JOIN trabajadores t ON t.id = u.trabajador_id
+        LEFT JOIN sucursales   s ON s.id = t.sucursal_id
+        WHERE u.id = ?
+        """;
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, usuarioId);
@@ -270,24 +284,44 @@ public class PantallaAsesor implements Refrescable {
                 if (rs.next()) {
                     nombreTrabajador = rs.getString("nombreTrabajador");
                     nombreSucursal   = rs.getString("sucursal");
+                    sucursalId       = rs.getInt("sucursal_id");  // <— AÑADIDO
                 }
             }
         } catch (SQLException e) {
-            nombreTrabajador = "Asesor"; nombreSucursal = "";
+            nombreTrabajador = "Asesor";
+            nombreSucursal   = "";
+            sucursalId       = -1; // <— fallback
         }
         lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Asesor");
         lblSucursal.setText(nombreSucursal != null ? nombreSucursal : "");
     }
 
+    //FUNCIONALIDAD BOTON MODIFICAR
+    private void abrirSeleccionModificar() {
+        try {
+            Class<?> cls = Class.forName("SeleccionarCliente2");
+            try {
+                var ctor = cls.getDeclaredConstructor(Refrescable.class, int.class);
+                ctor.setAccessible(true);
+                ctor.newInstance(this, usuarioId);
+            } catch (NoSuchMethodException noPair) {
+                var ctor2 = cls.getDeclaredConstructor();
+                ctor2.setAccessible(true);
+                ctor2.newInstance();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(pantalla, "No se pudo abrir la selección: " + ex.getMessage());
+        }
+    }
     // ========= CARGA DE CLIENTES =========
     public void cargarClientesDesdeBD() {
-        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, correo FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
-        int limit = PAGE_SIZE, offset = currentOffset;
+        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo " +
+                "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
 
         try (Connection conn = DB.get();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            // (opcional) deja lista la conexión por si luego escribes y quieres bitácora
             if (usuarioId > 0) {
                 try (PreparedStatement set = conn.prepareStatement("SET @app_user_id = ?")) {
                     set.setInt(1, usuarioId);
@@ -295,8 +329,8 @@ public class PantallaAsesor implements Refrescable {
                 }
             }
 
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
+            ps.setInt(1, PAGE_SIZE);
+            ps.setInt(2, currentOffset);
 
             try (ResultSet rs = ps.executeQuery()) {
                 DefaultTableModel modelo = (DefaultTableModel) tblAsesor.getModel();
@@ -309,11 +343,11 @@ public class PantallaAsesor implements Refrescable {
                     String curp       = rs.getString(3);
                     String pensionado = rs.getBoolean(4) ? "Sí" : "No";
                     String rfc        = rs.getString(5);
-                    String correo     = rs.getString(6);
-                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, correo});
+                    String nss        = rs.getString(6);
+                    String correo     = rs.getString(7);
+                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
                 }
             }
-
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(pantalla, "Error al cargar clientes: " + e.getMessage());
             e.printStackTrace();
