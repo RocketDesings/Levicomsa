@@ -326,7 +326,7 @@ public class Login {
 
             switch (s.rolId) {
                 case 1 -> new PantallaAdmin(s.idUsuario);
-                case 2 -> new pantallaCajero(/* idem */);
+                case 2 -> new pantallaCajero(s.idUsuario);
                 case 3 -> new PantallaAsesor(s.idUsuario); // <-- ¡aquí va el id del usuario logueado!
                 default -> JOptionPane.showMessageDialog(null, "Rol no soportado: " + s.rolId);
             }

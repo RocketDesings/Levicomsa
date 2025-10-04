@@ -28,7 +28,7 @@ public class InterfazCajero implements Refrescable {
     private JButton btnAgregarCliente;
     private JButton btnModificarCliente;
     private JButton btnRealizarCobro;
-    private JButton btnSalir;
+    private JButton btnCorte;
     private JLabel lblNombre;
     private JLabel lblImagen;
     private JLabel lblPlaceholder;
@@ -48,6 +48,8 @@ public class InterfazCajero implements Refrescable {
     private JScrollPane scrTablaClientes;
     private JScrollPane scrTablaCobros;
     private JTable tblCobros;
+    private JButton btnEntrada;
+    private JButton btnSalida;
 
 
     // ====== comportamiento ======
@@ -118,8 +120,14 @@ public class InterfazCajero implements Refrescable {
         pantalla.setVisible(true);
 
         // Acciones
-        btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
+        btnCorte.addActionListener(e -> new AlertaCerrarSesion(pantalla));
         btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
+        // Botones de movimientos de caja
+        btnEntrada.addActionListener(e -> abrirRegistrarEntrada());
+        btnSalida.addActionListener(e -> abrirRegistrarSalida());
+        btnRealizarCobro.addActionListener(e ->
+                RealizarCobro.mostrar(pantalla, sucursalId, usuarioId)
+        );
 
         iniciarReloj();
         configurarTabla();
@@ -159,7 +167,7 @@ public class InterfazCajero implements Refrescable {
         stylePrimaryButton(btnAgregarCliente);      // verde sólido
         styleOutlineButton(btnModificarCliente);    // outline discreto
         styleOutlineButton(btnRealizarCobro);
-        styleExitButton(btnSalir);                  // rojo base, hover gris, texto negro
+        styleExitButton(btnCorte);                  // rojo base, hover gris, texto negro
 
         // Search field
         styleSearchField(tfBuscar);
@@ -424,6 +432,35 @@ public class InterfazCajero implements Refrescable {
         pantalla.setVisible(true);
         cargarClientesDesdeBD();
     }
+    private void abrirRealizarCobro() {
+        // Validar selección
+        int viewRow = tblCobros.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(pantalla, "Selecciona un cobro pendiente en la tabla.");
+            return;
+        }
+
+        // ID del cobro (columna 0 en tu modelo)
+        int modelRow = tblCobros.convertRowIndexToModel(viewRow);
+        Object idObj = tblCobros.getModel().getValueAt(modelRow, 0);
+        long cobroId;
+        try {
+            cobroId = Long.parseLong(String.valueOf(idObj));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(pantalla, "No se pudo leer el ID del cobro seleccionado.");
+            return;
+        }
+
+        // Validar contexto
+        if (sucursalId <= 0 || usuarioId <= 0) {
+            JOptionPane.showMessageDialog(pantalla, "No se pudo determinar sucursal/usuario.");
+            return;
+        }
+
+        // Abrir y, al cerrar, refrescar la tabla de pendientes
+        RealizarCobro.mostrar(pantalla, sucursalId, usuarioId);
+        cargarCobrosPendientes();
+    }
 
     @Override
     public void refrescarDatos() {
@@ -589,6 +626,29 @@ public class InterfazCajero implements Refrescable {
 
             g2.dispose();
         }
+    }
+    private void abrirRegistrarEntrada() {
+        if (sucursalId <= 0 || usuarioId <= 0) {
+            JOptionPane.showMessageDialog(pantalla, "No se pudo determinar sucursal/usuario.");
+            return;
+        }
+        if (RegistrarEntrada.isAbierto()) {
+            JOptionPane.showMessageDialog(pantalla, "Ya hay una ventana de 'Registrar ENTRADA' abierta.");
+            return;
+        }
+        RegistrarEntrada.mostrar(sucursalId, usuarioId);
+    }
+
+    private void abrirRegistrarSalida() {
+        if (sucursalId <= 0 || usuarioId <= 0) {
+            JOptionPane.showMessageDialog(pantalla, "No se pudo determinar sucursal/usuario.");
+            return;
+        }
+        if (RegistrarSalida.isAbierto()) {
+            JOptionPane.showMessageDialog(pantalla, "Ya hay una ventana de 'Registrar SALIDA' abierta.");
+            return;
+        }
+        RegistrarSalida.mostrar(sucursalId, usuarioId);
     }
 
     // Muestra una imagen recortada en círculo con borde sutil
