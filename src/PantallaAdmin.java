@@ -79,7 +79,7 @@ public class PantallaAdmin implements Refrescable {
         lblSlogan.setText("<html>Comprometidos con tu tranquilidad,<br>ofreciéndote soluciones a la medida de tus necesidades.</html>");
         // Frame
         pantalla = new JFrame("Panel de Administración");
-        pantalla.setUndecorated(true);
+        pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
