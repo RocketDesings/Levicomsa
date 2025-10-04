@@ -86,7 +86,7 @@ public class InterfazCajero implements Refrescable {
         this.usuarioId = usuarioId;
         // ===== Frame =====
         pantalla = new JFrame("Pantalla Asesor");
-        pantalla.setUndecorated(true);
+        pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         UiImages.setIcon(lblIcono, "/images/levicomsa.png",150);
         UiImages.setIcon(lblImagen, "/images/usuario.png",100);
