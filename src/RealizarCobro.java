@@ -217,6 +217,17 @@ public class RealizarCobro {
 
         // cancelar
         if (btnCancelarButton != null) btnCancelarButton.addActionListener(e -> dialog.dispose());
+
+        cmbMetodoPago.addActionListener(e -> {
+            MetodoPagoItem mp = (MetodoPagoItem) cmbMetodoPago.getSelectedItem();
+            if (mp != null && mp.nombre.equalsIgnoreCase("Transferencia")) {
+                txtCobro.setText("");
+                txtCobro.setEditable(false);
+            } else {
+                txtCobro.setEditable(true);
+            }
+        });
+
     }
 
     // ====== Carga de datos ======
@@ -358,12 +369,11 @@ public class RealizarCobro {
 
     // ====== Acciones UI ======
     private void agregarExtra() {
-        if (cobrosAgregados.isEmpty()) {
-            JOptionPane.showMessageDialog(dialog, "Primero agrega al menos un cobro al ticket (selecciona y presiona ENTER).");
+        ServicioItem s = (ServicioItem) cmbServiciosExtra.getSelectedItem();
+        if (s == null) {
+            JOptionPane.showMessageDialog(dialog, "Selecciona un servicio extra.");
             return;
         }
-        ServicioItem s = (ServicioItem) cmbServiciosExtra.getSelectedItem();
-        if (s == null) { JOptionPane.showMessageDialog(dialog, "Selecciona un servicio extra."); return; }
 
         int cant;
         try {
@@ -375,18 +385,19 @@ public class RealizarCobro {
             return;
         }
 
-        // Asignamos extras al PRIMER cobro agregado (política simple)
-        int cobroDestino = cobrosAgregados.iterator().next();
+        // Si NO hay cobros agregados, creamos un "cobro virtual" (id = 0) para extras sueltos
+        int cobroDestino = cobrosAgregados.isEmpty() ? 0 : cobrosAgregados.iterator().next();
 
         BigDecimal sub = s.precio.multiply(BigDecimal.valueOf(cant));
         modelItems.addRow(new Object[]{s.nombre + " (extra)", cant, s.precio, sub, s.id, cobroDestino});
         extrasPendientes.add(new Extra(s.id, cant, s.precio));
 
-        // sumamos al total del cobro destino
-        totalPorCobro.put(cobroDestino, totalPorCobro.getOrDefault(cobroDestino, BigDecimal.ZERO).add(sub));
+        totalPorCobro.put(cobroDestino,
+                totalPorCobro.getOrDefault(cobroDestino, BigDecimal.ZERO).add(sub));
 
         txtCantidad.setText("1");
-        if (cmbServiciosExtra.getItemCount() > 0) cmbServiciosExtra.setSelectedIndex(0);
+        if (cmbServiciosExtra.getItemCount() > 0)
+            cmbServiciosExtra.setSelectedIndex(0);
 
         actualizarTotalYCambio();
     }
