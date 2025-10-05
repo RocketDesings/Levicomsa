@@ -139,8 +139,11 @@ public class InterfazCajero implements Refrescable {
         cargarCobrosPendientes();
 
         // Auto refresh
-        autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 5000);
-        autoActualizador.iniciar();
+        autoActualizador = new AutoActualizarTabla(() -> {
+            cargarClientesDesdeBD(); //REcarga la tabla de clientes
+            cargarCobrosPendientes(); // Recarga la tabla de cobros pendientes
+        }, 5000); // cada 5 segundos
+        autoActualizador.iniciar(); // Inicia la autoactualización
 
         SwingUtilities.invokeLater(() -> tfBuscar.requestFocusInWindow());
 
