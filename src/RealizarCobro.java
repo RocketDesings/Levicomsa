@@ -1,5 +1,4 @@
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -57,6 +56,7 @@ public class RealizarCobro {
     private JPanel panelTotal;
     private JButton btnAnadirObjetoExtra;
     private JLabel lblTituloTabla;
+    private JButton btnEliminarObjeto;
 
     // === Estado ===
     private final int sucursalId;
@@ -227,6 +227,10 @@ public class RealizarCobro {
                 txtCobro.setEditable(true);
             }
         });
+        if (btnEliminarObjeto != null) {
+            btnEliminarObjeto.addActionListener(e -> eliminarItemSeleccionado());
+        }
+
 
     }
 
@@ -425,6 +429,53 @@ public class RealizarCobro {
             }
         }
     }
+
+    //Elimina la fila seleccionada en el detalle (tblObjetosTotal)
+    private void eliminarItemSeleccionado() {
+        int row = tblObjetosTotal.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(dialog, "Selecciona una fila para eliminar.");
+            return;
+        }
+
+        int modelRow = tblObjetosTotal.convertRowIndexToModel(row);
+        Integer cobroId = (Integer) modelItems.getValueAt(modelRow, 5);
+        BigDecimal sub = toMoney(modelItems.getValueAt(modelRow, 3));
+
+        // Si era un "extra pendiente", lo quitamos de la lista
+        if (cobroId != null && cobroId == 0) {
+            Integer servicioId = (Integer) modelItems.getValueAt(modelRow, 4);
+            extrasPendientes.removeIf(ex -> ex.servicioId == servicioId);
+        }
+
+        // Ajustamos el total del cobro correspondiente
+        if (cobroId != null) {
+            BigDecimal totalActual = totalPorCobro.getOrDefault(cobroId, BigDecimal.ZERO);
+            totalPorCobro.put(cobroId, totalActual.subtract(sub).max(BigDecimal.ZERO));
+        }
+
+        // Eliminamos la fila del modelo
+        modelItems.removeRow(modelRow);
+
+        // Si ya no quedan filas con ese cobro_id, lo sacamos del set
+        boolean siguePresente = false;
+        for (int r = 0; r < modelItems.getRowCount(); r++) {
+            Object val = modelItems.getValueAt(r, 5);
+            if (val instanceof Integer id && id.equals(cobroId)) {
+                siguePresente = true;
+                break;
+            }
+        }
+        if (!siguePresente && cobroId != null && cobroId != 0) {
+            cobrosAgregados.remove(cobroId);
+            totalPorCobro.remove(cobroId);
+        }
+
+        // Actualizamos títulos y totales
+        actualizarTituloResumen();
+        actualizarTotalYCambio();
+    }
+
 
     // ====== Cobrar ======
     private void onCobrar() {
