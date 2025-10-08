@@ -160,14 +160,15 @@ public class RealizarCobro {
         ocultarColumna(tblObjetosTotal, 5);
 
         // render dinero
-        var moneyR = new javax.swing.table.DefaultTableCellRenderer() {
-            @Override protected void setValue(Object v) {
-                if (v instanceof BigDecimal bd) {
-                    setHorizontalAlignment(RIGHT);
-                    setText("$ " + bd.setScale(2, RoundingMode.HALF_UP).toPlainString());
-                } else super.setValue(v);
-            }
-        };
+        javax.swing.table.DefaultTableCellRenderer moneyR =
+                new javax.swing.table.DefaultTableCellRenderer() {
+                    @Override protected void setValue(Object v) {
+                        if (v instanceof BigDecimal bd) {
+                            setHorizontalAlignment(RIGHT);
+                            setText("$ " + bd.setScale(2, RoundingMode.HALF_UP).toPlainString());
+                        } else super.setValue(v);
+                    }
+                };
         tblObjetosTotal.getColumnModel().getColumn(2).setCellRenderer(moneyR);
         tblObjetosTotal.getColumnModel().getColumn(3).setCellRenderer(moneyR);
 
@@ -198,7 +199,7 @@ public class RealizarCobro {
             }
         });
 
-        // agregar extra (requiere al menos UN cobro agregado al ticket)
+        // agregar extra (puede no haber cobros; si no hay, se marcan como cobro_id=0 y luego se migran/guardan)
         if (btnAnadirObjetoExtra != null) {
             btnAnadirObjetoExtra.addActionListener(e -> agregarExtra());
         }
@@ -230,19 +231,18 @@ public class RealizarCobro {
         if (btnEliminarObjeto != null) {
             btnEliminarObjeto.addActionListener(e -> eliminarItemSeleccionado());
         }
-
-
     }
 
     // ====== Carga de datos ======
     private void cargarCobrosPendientes() {
         modelCobros.setRowCount(0);
         String base = """
-            SELECT c.id, c.fecha, cl.nombre AS cliente,
+            SELECT c.id, c.fecha,
+                   COALESCE(cl.nombre, 'VENTA RÁPIDA') AS cliente,
                    COALESCE(c.total,0) AS total, c.notas,
                    COALESCE(u.nombre,u.usuario) AS registro
             FROM cobros c
-            JOIN Clientes cl ON cl.id = c.cliente_id
+            LEFT JOIN Clientes cl ON cl.id = c.cliente_id
             JOIN Usuarios u  ON u.id  = c.usuario_id
             WHERE c.estado='pendiente'
             """;
@@ -445,7 +445,18 @@ public class RealizarCobro {
         // Si era un "extra pendiente", lo quitamos de la lista
         if (cobroId != null && cobroId == 0) {
             Integer servicioId = (Integer) modelItems.getValueAt(modelRow, 4);
-            extrasPendientes.removeIf(ex -> ex.servicioId == servicioId);
+            int cantidad = ((Number) modelItems.getValueAt(modelRow, 1)).intValue();
+            BigDecimal precio = toMoney(modelItems.getValueAt(modelRow, 2));
+
+            for (Iterator<Extra> it = extrasPendientes.iterator(); it.hasNext();) {
+                Extra ex = it.next();
+                if (ex.servicioId == servicioId &&
+                        ex.cantidad == cantidad &&
+                        ex.precioUnit.compareTo(precio) == 0) {
+                    it.remove();
+                    break;
+                }
+            }
         }
 
         // Ajustamos el total del cobro correspondiente
@@ -476,13 +487,16 @@ public class RealizarCobro {
         actualizarTotalYCambio();
     }
 
-
     // ====== Cobrar ======
     private void onCobrar() {
-        if (cobrosAgregados.isEmpty()) {
-            JOptionPane.showMessageDialog(dialog, "Agrega uno o varios cobros al ticket antes de cobrar.");
+
+        // Basado en lo que REALMENTE hay en el ticket
+        if (modelItems.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(dialog,
+                    "Agrega al menos un cobro o un servicio extra antes de cobrar.");
             return;
         }
+
         BigDecimal totalGeneral = BigDecimal.ZERO;
         for (int r = 0; r < modelItems.getRowCount(); r++) {
             BigDecimal sub = toMoney(modelItems.getValueAt(r, 3));
@@ -496,7 +510,6 @@ public class RealizarCobro {
         MetodoPagoItem mp = (MetodoPagoItem) cmbMetodoPago.getSelectedItem();
         if (mp == null) { JOptionPane.showMessageDialog(dialog, "Selecciona método de pago."); return; }
 
-        // validación recibido si es efectivo
         boolean esEfectivo = mp.nombre.equalsIgnoreCase("Efectivo");
         if (esEfectivo) {
             try {
@@ -516,14 +529,11 @@ public class RealizarCobro {
         try (Connection con = DB.get()) {
             con.setAutoCommit(false);
 
-            // auditoría
-            try (PreparedStatement ps = con.prepareStatement("SET @app_user_id = ?")) {
-                ps.setInt(1, usuarioId);
-                ps.executeUpdate();
-            }
+            boolean hayCobros = !cobrosAgregados.isEmpty();
+            if (hayCobros) migrarExtrasAlPrimerCobroSiCorresponde();
 
-            // 1) Insertar EXTRAS (si los hay) en el PRIMER cobro agregado
-            if (!extrasPendientes.isEmpty()) {
+            // 1) Si hay cobros + extras: inserta los extras en el PRIMER cobro
+            if (hayCobros && !extrasPendientes.isEmpty()) {
                 int cobroDestino = cobrosAgregados.iterator().next();
                 final String insDet = "INSERT INTO cobro_detalle (cobro_id, servicio_id, cantidad, precio_unit) VALUES (?,?,?,?)";
                 try (PreparedStatement ins = con.prepareStatement(insDet)) {
@@ -538,42 +548,56 @@ public class RealizarCobro {
                 }
             }
 
-            for (Integer cobroId : cobrosAgregados) {
-                BigDecimal totalCobro = calcularTotalDelCobroEnTicket(cobroId);
-                final String up = "UPDATE cobros SET estado='pagado', total=?, metodo_pago_id=? " +
-                        "WHERE id=? AND estado='pendiente'";
-                try (PreparedStatement ps = con.prepareStatement(up)) {
-                    ps.setBigDecimal(1, totalCobro);
-                    ps.setInt(2, mp.id);
-                    ps.setInt(3, cobroId);
-                    int n = ps.executeUpdate();
-                    if (n == 0) {
-                        con.rollback();
-                        JOptionPane.showMessageDialog(dialog, "El cobro #" + cobroId + " ya no está pendiente.");
-                        btnCobrar.setEnabled(true);
-                        return;
+            // 2) Si hay cobros: marcarlos como pagados con su total individual
+            if (hayCobros) {
+                for (Integer cobroId : cobrosAgregados) {
+                    BigDecimal totalCobro = calcularTotalDelCobroEnTicket(cobroId);
+                    final String up = "UPDATE cobros SET estado='pagado', total=?, metodo_pago_id=? " +
+                            "WHERE id=? AND estado='pendiente'";
+                    try (PreparedStatement ps = con.prepareStatement(up)) {
+                        ps.setBigDecimal(1, totalCobro);
+                        ps.setInt(2, mp.id);
+                        ps.setInt(3, cobroId);
+                        int n = ps.executeUpdate();
+                        if (n == 0) {
+                            con.rollback();
+                            JOptionPane.showMessageDialog(dialog, "El cobro #" + cobroId + " ya no está pendiente.");
+                            btnCobrar.setEnabled(true);
+                            return;
+                        }
                     }
                 }
             }
 
-            // 3) Movimiento de caja (ENTRADA) por el total general
-            String ids = String.join(", ", cobrosAgregados.stream().map(String::valueOf).toList());
-            final String insMov = "INSERT INTO caja_movimientos " +
-                    "(sucursal_id, usuario_id, tipo, monto, descripcion, cobro_id) " +
-                    "VALUES (?, ?, 'ENTRADA', ?, CONCAT('PAGO COBROS #', ?), NULL)";
-            try (PreparedStatement ps = con.prepareStatement(insMov)) {
-                ps.setInt(1, sucursalId);
-                ps.setInt(2, usuarioId);
-                ps.setBigDecimal(3, totalGeneral);
-                ps.setString(4, ids);
-                ps.executeUpdate();
+            // 3) Movimiento(s) de caja (ENTRADA)
+            if (hayCobros) {
+                final String insMov = "INSERT INTO caja_movimientos " +
+                        "(sucursal_id, usuario_id, tipo, monto, descripcion, cobro_id) " +
+                        "VALUES (?, ?, 'ENTRADA', ?, ?, ?)";
+                try (PreparedStatement ps = con.prepareStatement(insMov)) {
+                    for (Integer cobroId : cobrosAgregados) {
+                        BigDecimal totalCobro = calcularTotalDelCobroEnTicket(cobroId);
+                        ps.setInt(1, sucursalId);
+                        ps.setInt(2, usuarioId);
+                        ps.setBigDecimal(3, totalCobro);
+                        ps.setString(4, "PAGO COBRO #" + cobroId);
+                        ps.setInt(5, cobroId);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                con.commit();
+                String ids = String.join(", ", cobrosAgregados.stream().map(String::valueOf).toList());
+                JOptionPane.showMessageDialog(dialog,
+                        "Cobros " + ids + " registrados como PAGADOS.");
+            } else {
+                // SOLO EXTRAS -> crea un cobro con cliente_id NULL
+                long cobroExtrasId = crearCobroSoloExtras(con, ((MetodoPagoItem) cmbMetodoPago.getSelectedItem()));
+                con.commit();
+                JOptionPane.showMessageDialog(dialog,
+                        "Pago de servicios extra registrado. Folio cobro #" + cobroExtrasId + ".");
             }
-
-            con.commit();
-
-            JOptionPane.showMessageDialog(dialog,
-                    "Cobros " + ids + " registrados como PAGADOS.\nTotal: $ " +
-                            totalGeneral.setScale(2, RoundingMode.HALF_UP).toPlainString());
 
             dialog.dispose(); // cerrar al cobrar
 
@@ -625,5 +649,85 @@ public class RealizarCobro {
         String s = String.valueOf(v).trim().replace(",", ".");
         if (s.isEmpty()) return BigDecimal.ZERO;
         return new BigDecimal(s).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    // Pasa las filas de extras con cobro_id = 0 al primer cobro del ticket
+    private void migrarExtrasAlPrimerCobroSiCorresponde() {
+        if (cobrosAgregados.isEmpty()) return;
+        int primerCobro = cobrosAgregados.iterator().next();
+        boolean migrado = false;
+
+        for (int r = 0; r < modelItems.getRowCount(); r++) {
+            Object vCobro = modelItems.getValueAt(r, 5);
+            if (vCobro instanceof Integer id && id == 0) {
+                modelItems.setValueAt(primerCobro, r, 5);
+                migrado = true;
+            }
+        }
+        if (migrado) {
+            // Recalcula totales por cobro en memoria si los usas en la UI
+            totalPorCobro.put(primerCobro, calcularTotalDelCobroEnTicket(primerCobro));
+            totalPorCobro.remove(0); // limpia el acumulado del “cobro virtual”
+            actualizarTotalYCambio();
+        }
+    }
+
+    // Crea un cobro “rápido” pagado solo con extras, guarda detalle y su movimiento de caja enlazado.
+    // Devuelve el ID del cobro creado. cliente_id = NULL (venta rápida)
+    private long crearCobroSoloExtras(Connection con, MetodoPagoItem mp) throws Exception {
+        // 1) Encabezado
+        final String insCobro = "INSERT INTO cobros (sucursal_id, cliente_id, usuario_id, notas) VALUES (?,?,?,?)";
+        long cobroId;
+        try (PreparedStatement ps = con.prepareStatement(insCobro, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, sucursalId);
+            ps.setNull(2, Types.INTEGER); // cliente_id NULL para venta rápida
+            ps.setInt(3, usuarioId);
+            ps.setString(4, "COBRO SOLO EXTRAS");
+            ps.executeUpdate();
+            try (ResultSet k = ps.getGeneratedKeys()) {
+                if (!k.next()) throw new SQLException("No se generó ID de cobro para extras.");
+                cobroId = k.getLong(1);
+            }
+        }
+
+        // 2) Detalle de extras
+        final String insDet = "INSERT INTO cobro_detalle (cobro_id, servicio_id, cantidad, precio_unit) VALUES (?,?,?,?)";
+        BigDecimal totalExtras = BigDecimal.ZERO;
+        try (PreparedStatement ps = con.prepareStatement(insDet)) {
+            for (Extra ex : extrasPendientes) {
+                ps.setLong(1, cobroId);
+                ps.setInt(2, ex.servicioId);
+                ps.setInt(3, ex.cantidad);
+                ps.setBigDecimal(4, ex.precioUnit);
+                ps.addBatch();
+                totalExtras = totalExtras.add(ex.precioUnit.multiply(BigDecimal.valueOf(ex.cantidad)));
+            }
+            ps.executeBatch();
+        }
+
+        // 3) Marcar pagado con total y método de pago
+        final String up = "UPDATE cobros SET estado='pagado', total=?, metodo_pago_id=? " +
+                "WHERE id=? AND estado='pendiente'";
+        try (PreparedStatement ps = con.prepareStatement(up)) {
+            ps.setBigDecimal(1, totalExtras);
+            ps.setInt(2, mp.id);
+            ps.setLong(3, cobroId);
+            int n = ps.executeUpdate();
+            if (n == 0) throw new SQLException("El cobro de extras ya no está pendiente (concurrencia).");
+        }
+
+        // 4) Movimiento de caja enlazado a este cobro
+        final String insMov = "INSERT INTO caja_movimientos " +
+                "(sucursal_id, usuario_id, tipo, monto, descripcion, cobro_id) " +
+                "VALUES (?, ?, 'ENTRADA', ?, 'PAGO SERVICIOS EXTRA', ?)";
+        try (PreparedStatement ps = con.prepareStatement(insMov)) {
+            ps.setInt(1, sucursalId);
+            ps.setInt(2, usuarioId);
+            ps.setBigDecimal(3, totalExtras);
+            ps.setLong(4, cobroId);
+            ps.executeUpdate();
+        }
+
+        return cobroId;
     }
 }
