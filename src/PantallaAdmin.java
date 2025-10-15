@@ -43,6 +43,9 @@ public class PantallaAdmin implements Refrescable {
     private JPanel panelBusqueda;
     private JTextField tfBuscar;
     private JLabel lblPlaceholder;
+    private JPanel panelAdmin;
+    private JButton btnAdministracion;
+    private JButton btnBitacoras;
     private JButton buscarButton;
 
     // ====== comportamiento ======
@@ -53,6 +56,10 @@ public class PantallaAdmin implements Refrescable {
     private final int usuarioId;   // Usuarios.id
     private String nombreTrabajador;
     private String nombreSucursal;
+    private int sucursalId = -1;   // <— NUEVO: id de la sucursal asociada al usuario
+
+    // Referencia a la ventana de Herramientas (para no abrir duplicadas)
+    private JDialog dlgHerramientas;  // <— NUEVO
 
     // paginación
     private static final int PAGE_SIZE = 300;
@@ -110,15 +117,33 @@ public class PantallaAdmin implements Refrescable {
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
         if (btnEliminar != null) btnEliminar.addActionListener(e -> eliminarCliente());
-        if (btnCobrar != null) {
-            // conéctalo a tu flujo de cobro cuando lo tengas
-        }
 
+        // Deshabilita Cobrar hasta que tengamos sucursalId válido
+        if (btnCobrar != null) btnCobrar.setEnabled(false);
+
+        // Abrir Herramientas admin sin duplicados
+        if (btnAdministracion != null)
+            btnAdministracion.addActionListener(e -> mostrarHerramientasAdmin());
+
+        // Reloj + tabla + búsqueda
         iniciarReloj();
         configurarTabla();
         cablearBusquedaInline();
+
+        // Cargar datos de usuario (esto setea sucursalId) y clientes
         cargarDatosAdmin();
         cargarClientesDesdeBD();
+
+        // Ahora que ya cargamos, cablea Cobrar con validación
+        if (btnCobrar != null) {
+            btnCobrar.addActionListener(e -> {
+                if (sucursalId <= 0) {
+                    JOptionPane.showMessageDialog(pantalla, "No se detectó sucursal del usuario.");
+                    return;
+                }
+                EnviarCobro.mostrar(sucursalId, usuarioId);
+            });
+        }
 
         autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 5000);
         autoActualizador.iniciar();
@@ -174,7 +199,6 @@ public class PantallaAdmin implements Refrescable {
         ));
     }
 
-
     // ====================== UI básica ======================
     private void iniciarReloj() {
         if (lblHora == null) return;
@@ -208,7 +232,6 @@ public class PantallaAdmin implements Refrescable {
         for (int i = 0; i < Math.min(widths.length, table1.getColumnCount()); i++) {
             table1.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
-
     }
 
     private void cablearBusquedaInline() {
@@ -262,11 +285,14 @@ public class PantallaAdmin implements Refrescable {
         if (usuarioId <= 0) {
             if (lblNombre != null)   lblNombre.setText("Administrador");
             if (lblSucursal != null) lblSucursal.setText("");
+            sucursalId = -1;
+            if (btnCobrar != null) btnCobrar.setEnabled(false);
             return;
         }
         final String sql = """
             SELECT COALESCE(u.nombre, t.nombre) AS nombreTrabajador,
-                   s.nombre AS sucursal
+                   s.nombre AS sucursal,
+                   s.id     AS sucursal_id
             FROM Usuarios u
             LEFT JOIN trabajadores t ON t.id = u.trabajador_id
             LEFT JOIN sucursales   s ON s.id = t.sucursal_id
@@ -279,12 +305,19 @@ public class PantallaAdmin implements Refrescable {
                 if (rs.next()) {
                     nombreTrabajador = rs.getString("nombreTrabajador");
                     nombreSucursal   = rs.getString("sucursal");
+                    sucursalId       = rs.getInt("sucursal_id");
+                    if (rs.wasNull()) sucursalId = -1;
+                } else {
+                    sucursalId = -1;
                 }
             }
-        } catch (SQLException ignored) {}
+        } catch (SQLException ignored) {
+            sucursalId = -1;
+        }
 
         if (lblNombre != null)   lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Administrador");
         if (lblSucursal != null) lblSucursal.setText(nombreSucursal != null ? nombreSucursal : "");
+        if (btnCobrar != null)   btnCobrar.setEnabled(sucursalId > 0);  // habilita sólo si hay sucursal válida
     }
 
     // ====================== Datos de clientes ======================
@@ -316,7 +349,7 @@ public class PantallaAdmin implements Refrescable {
                     String curp       = rs.getString(3);
                     String pensionado = rs.getBoolean(4) ? "Sí" : "No";
                     String rfc        = rs.getString(5);
-                    String nss        = rs.getString(6);   // <— NSS
+                    String nss        = rs.getString(6);   // NSS
                     String correo     = rs.getString(7);
                     modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
                 }
@@ -420,6 +453,22 @@ public class PantallaAdmin implements Refrescable {
 
     private void mostrarAlertaCerrarSesion() {
         new AlertaCerrarSesion(pantalla);
+    }
+
+    // ====================== Herramientas Admin (sin duplicados) ======================
+    private void mostrarHerramientasAdmin() {
+        if (dlgHerramientas != null && dlgHerramientas.isDisplayable()) {
+            dlgHerramientas.toFront();
+            dlgHerramientas.requestFocus();
+            return;
+        }
+        // Crea nueva instancia (requiere que HerramientasAdmin extienda JDialog y tenga ctor Window)
+        dlgHerramientas = new HerramientasAdmin(pantalla, usuarioId, sucursalId);
+        dlgHerramientas.addWindowListener(new WindowAdapter() {
+            @Override public void windowClosed (WindowEvent e) { dlgHerramientas = null; }
+            @Override public void windowClosing(WindowEvent e) { dlgHerramientas = null; }
+        });
+        dlgHerramientas.setVisible(true);
     }
 
     // ========= estilos reutilizables =========

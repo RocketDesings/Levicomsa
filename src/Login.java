@@ -113,7 +113,6 @@ public class Login {
         Sesion(int idUsuario, int rolId) { this.idUsuario = idUsuario; this.rolId = rolId; }
     }
 
-    // Reemplaza tu obtenerRolIdUsuario(...) por esto:
     private Sesion autenticarUsuario(String usuario, String plainPassword) {
         // 1) Intento moderno: password_hash
         String q1 = "SELECT id, password_hash, rol_id FROM Usuarios WHERE usuario = ?";
@@ -124,7 +123,10 @@ public class Login {
                     String hash = rs.getString("password_hash");
                     int rol = rs.getInt("rol_id");
                     int id  = rs.getInt("id");
-                    if (comprobarPassword(plainPassword, hash)) return new Sesion(id, rol);
+                    if (comprobarPassword(plainPassword, hash)) {
+                        registrarLastLogin(id);          // <<<<<< ACTUALIZA AQUÍ
+                        return new Sesion(id, rol);
+                    }
                 }
             }
         } catch (SQLException ex) {
@@ -140,7 +142,10 @@ public class Login {
                     String plano = rs.getString("password_plano");
                     int rol = rs.getInt("rol_id");
                     int id  = rs.getInt("id");
-                    if (plano != null && plainPassword.equals(plano)) return new Sesion(id, rol);
+                    if (plano != null && plainPassword.equals(plano)) {
+                        registrarLastLogin(id);          // <<<<<< Y AQUÍ TAMBIÉN
+                        return new Sesion(id, rol);
+                    }
                 }
             }
         } catch (SQLException ex) {
@@ -149,6 +154,19 @@ public class Login {
         return null;
     }
 
+
+    /** Guarda NOW() en Usuarios.last_login para el usuario dado. */
+    private void registrarLastLogin(int userId) {
+        final String sql = "UPDATE Usuarios SET last_login = NOW() WHERE id = ?";
+        try (Connection con = DB.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            // No interrumpas el flujo de login si falla este update
+            System.err.println("[Login] No se pudo actualizar last_login: " + e.getMessage());
+        }
+    }
 
     // ======== DISEÑO: helpers ========
 
