@@ -161,8 +161,8 @@ public class CRUDCategorias {
 
         int ok = JOptionPane.showConfirmDialog(
                 panelMain,
-                "¿Eliminar definitivamente la categoría ID " + id + "?\n" +
-                        "Si está referenciada, podrás desactivarla (activo=0).",
+                "¿Eliminar definitivamente la categoría?\n" +
+                        "Si está referenciada, podrás desactivarla.",
                 "Confirmar", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE
         );
         if (ok != JOptionPane.YES_OPTION) return;
@@ -182,7 +182,7 @@ public class CRUDCategorias {
             // Si está referenciada, ofrecer “soft delete”
             if (isFK(e)) {
                 int ch = JOptionPane.showConfirmDialog(panelMain,
-                        "La categoría está referenciada.\n¿Deseas DESACTIVARLA (activo=0) en su lugar?",
+                        "La categoría está referenciada.\n¿Deseas DESACTIVARLA en su lugar?",
                         "Categoría referenciada", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
                 if (ch == JOptionPane.YES_OPTION) softDeleteCategoria(id);
             } else {
