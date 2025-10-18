@@ -59,12 +59,14 @@ public final class DB {
             long leakMs      = getLong("DB_LEAK_DETECT",   p, "pool.leakDetectionMs",      0L,   0L,      3_600_000L);
             String poolName  = firstNonEmpty(System.getenv("DB_POOL_NAME"), p.getProperty("pool.name"), "CRM-Pool");
 
+
+
             HikariConfig cfg = new HikariConfig();
             cfg.setPoolName(poolName);
             cfg.setJdbcUrl(url);
             cfg.setUsername(user);
             cfg.setPassword(pass);
-
+            cfg.setConnectionInitSql("SET time_zone = 'America/Mazatlan'");
             cfg.setMaximumPoolSize(maxPool);
             cfg.setMinimumIdle(minIdle);
             cfg.setIdleTimeout(idleMs);
@@ -94,6 +96,7 @@ public final class DB {
         setIfAbsent(cfg, "prepStmtCacheSqlLimit", "2048");
         setIfAbsent(cfg, "useServerPrepStmts", "true");
         setIfAbsent(cfg, "rewriteBatchedStatements", "true");
+        setIfAbsent(cfg, "serverTimezone", "America/Mazatlan");
     }
 
     private static void setIfAbsent(HikariConfig cfg, String key, String value) {

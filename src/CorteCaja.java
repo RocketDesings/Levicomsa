@@ -10,9 +10,15 @@ import java.io.FileWriter;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.sql.Timestamp;
+import java.time.*;
+
+
 
 /** Corte de caja – JDialog compacto con totales y tabla de movimientos del día. */
 public class CorteCaja {
+    // Zona horaria oficial para Tepic/Nayarit
+    private static final ZoneId ZONA_TEPIC = ZoneId.of("America/Mazatlan");
 
     // ==== componentes del .form ====
     private JPanel main;
@@ -36,6 +42,7 @@ public class CorteCaja {
     private JLabel lblContado;
     private JLabel lblEntradas;
 
+
     // ==== contexto ====
     private final int sucursalId;
     private final int usuarioId;
@@ -46,6 +53,7 @@ public class CorteCaja {
     // formato
     private static final DateTimeFormatter DF_FECHA   = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DF_FECHAHH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
 
     // Colores (coinciden con InterfazCajero)
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
@@ -102,7 +110,7 @@ public class CorteCaja {
 
     private void inicializarCabecera() {
         // Fecha: hoy si no hay texto
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(ZONA_TEPIC);
         if (lblFecha != null) lblFecha.setText(DF_FECHA.format(hoy));
 
         // Nombre de sucursal (si hay etiqueta)
@@ -159,7 +167,7 @@ public class CorteCaja {
                 v = v.replace("$","").replace(",","").trim();
                 double contado = 0;
                 try { contado = Double.parseDouble(v); } catch (Exception ignore) {}
-                lblTotalContadores.setText(formatea(contado));
+                lblContado.setText(formatea(contado));
                 recalcularTotalesDelDia(); // actualiza diferencia
             });
         }
@@ -177,7 +185,7 @@ public class CorteCaja {
         try {
             return LocalDate.parse(lblFecha.getText().trim(), DF_FECHA);
         } catch (Exception ignore) {
-            return LocalDate.now();
+            return LocalDate.now(ZONA_TEPIC);
         }
     }
 
@@ -226,9 +234,11 @@ public class CorteCaja {
             FROM caja_movimientos m
             WHERE m.sucursal_id = ?
               AND m.fecha >= ? AND m.fecha < ?
+              AND m.cobro_id IS NULL   -- <<< evita duplicar pagos ya listados en COBROS
         ) t
         ORDER BY fecha
         """;
+
 
         boolean hayFilas = false;
         try (Connection con = DB.get();
@@ -244,7 +254,7 @@ public class CorteCaja {
                     double monto    = rs.getDouble(3);
                     String metodo   = rs.getString(4);
                     Timestamp ts    = rs.getTimestamp(5);
-                    String fechaTx  = (ts != null ? DF_FECHAHH.format(ts.toLocalDateTime()) : "");
+                    String fechaTx = (ts != null ? DF_FECHAHH.format(ZonedDateTime.ofInstant(ts.toInstant(), ZONA_TEPIC)) : "");
                     m.addRow(new Object[]{concepto, descr, monto, metodo, fechaTx});
                     hayFilas = true;
                 }
@@ -300,16 +310,18 @@ public class CorteCaja {
         }
 
         // -- Cobros pagados (1=Efectivo, 3=Transferencia)
+        // -- Cobros pagados: separar servicios vs extras (cliente_id NULL = extras)
         final String qCobros = """
-        SELECT 
-            COALESCE(SUM(CASE WHEN metodo_pago_id = 1 THEN total END), 0) AS efec,
-            COALESCE(SUM(CASE WHEN metodo_pago_id = 3 THEN total END), 0) AS transf,
-            COALESCE(SUM(total), 0)                                        AS total
-        FROM cobros
-        WHERE estado='pagado'
-          AND sucursal_id = ?
-          AND fecha >= ? AND fecha < ?
-        """;
+                SELECT 
+                    COALESCE(SUM(CASE WHEN metodo_pago_id = 1 THEN total END), 0)                                      AS efec,
+                    COALESCE(SUM(CASE WHEN metodo_pago_id = 3 THEN total END), 0)                                      AS transf,
+                    COALESCE(SUM(CASE WHEN cliente_id IS NOT NULL THEN total END), 0)                                  AS servicios,
+                    COALESCE(SUM(CASE WHEN cliente_id IS NULL  THEN total END), 0)                                     AS extras
+                FROM cobros
+                WHERE estado='pagado'
+                  AND sucursal_id = ?
+                  AND fecha >= ? AND fecha < ?
+                """;
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(qCobros)) {
             ps.setInt(1, sucursalId);
@@ -317,9 +329,13 @@ public class CorteCaja {
             ps.setTimestamp(3, t1);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    ventasEfe   = rs.getDouble("efec");
-                    ventasTrans = rs.getDouble("transf");
-                    ventasTotal = rs.getDouble("total");
+                    ventasEfe    = rs.getDouble("efec");
+                    ventasTrans  = rs.getDouble("transf");
+                    ventasTotal  = rs.getDouble("servicios"); // “Cobros (Servicios)”
+                    double extrasTotal = rs.getDouble("extras"); // “Cobros (Extras)”
+
+                    // Pinta “Cobros (Extras)”
+                    pintar(lblExtras, extrasTotal);
                 }
             }
         } catch (SQLException ex) {
@@ -327,15 +343,17 @@ public class CorteCaja {
             ex.printStackTrace();
         }
 
+
         // ——— aquí van exactamente tus requerimientos ———
         // lblIngresosEfectivo = cobros en efectivo + movimientos ENTRADA
         double ingresosEfectivoLbl = ventasEfe + entradasCaja;
 
         // Efectivo teórico y “ingresos totales”
         double efectivoTeorico = fondoInicial + ventasEfe + entradasCaja - salidas;
-        double ingresosTotales = ventasTotal + entradasCaja; // mantenemos tu lógica vigente
+        double ingresosTotales = ventasTotal + parseMoney(lblExtras.getText()) + entradasCaja;
 
-        double contado = parseMoney(lblTotalContadores != null ? lblTotalContadores.getText() : "0");
+
+        double contado = parseMoney(lblContado != null ? lblContado.getText() : "0");
         double diferencia = efectivoTeorico - contado;
 
         // Pintar
@@ -349,15 +367,15 @@ public class CorteCaja {
         pintar(lblEfectivoTeorico,       efectivoTeorico);
         pintar(lblDiferencia,            diferencia);
 
-        if (lblTotalContadores != null && (lblTotalContadores.getText() == null || lblTotalContadores.getText().isBlank()))
-            lblTotalContadores.setText(formatea(0));
+        if (lblContado != null && (lblContado.getText() == null || lblContado.getText().isBlank()))
+            lblContado.setText(formatea(0));
     }
 
     // ================== EXPORTAR ==================
     private void exportarCSV() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Exportar corte (CSV)");
-        fc.setSelectedFile(new java.io.File("corte_caja_" + LocalDate.now() + ".csv"));
+        fc.setSelectedFile(new java.io.File("corte_caja_" + LocalDate.now(ZONA_TEPIC) + ".csv"));
         if (fc.showSaveDialog(dialog) != JFileChooser.APPROVE_OPTION) return;
 
         try (FileWriter wr = new FileWriter(fc.getSelectedFile())) {
@@ -398,10 +416,10 @@ public class CorteCaja {
         catch (Exception e) { return 0; }
     }
     private java.sql.Timestamp startOf(java.time.LocalDate d) {
-        return java.sql.Timestamp.valueOf(d.atStartOfDay());
+        return java.sql.Timestamp.from(d.atStartOfDay(ZONA_TEPIC).toInstant());
     }
     private java.sql.Timestamp endOf(java.time.LocalDate d) {
-        return java.sql.Timestamp.valueOf(d.plusDays(1).atStartOfDay());
+        return java.sql.Timestamp.from(d.plusDays(1).atStartOfDay(ZONA_TEPIC).toInstant());
     }
 
     // ===== estilos =====
