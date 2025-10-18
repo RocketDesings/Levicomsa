@@ -81,7 +81,6 @@ public class InterfazCajero implements Refrescable {
     private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
     private static final Color TABLE_SEL_TX = TEXT_PRIMARY;
 
-    public InterfazCajero() { this(-1); }
     public InterfazCajero(int usuarioId) {
         this.usuarioId = usuarioId;
         // ===== Frame =====
@@ -120,7 +119,7 @@ public class InterfazCajero implements Refrescable {
         pantalla.setVisible(true);
 
         // Acciones
-        btnCorte.addActionListener(e -> new AlertaCerrarSesion(pantalla));
+        btnCorte.addActionListener(e -> CorteCaja.mostrar(pantalla, sucursalId, usuarioId));
         btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         // Botones de movimientos de caja
         btnEntrada.addActionListener(e -> abrirRegistrarEntrada());
