@@ -131,9 +131,12 @@ public class PantallaAdmin implements Refrescable {
         // Herramientas admin (sin duplicados)
         if (btnAdministracion != null)
             btnAdministracion.addActionListener(e -> mostrarHerramientasAdmin());
-        if (btnBitacoras != null)
+        if (btnBitacoras != null) {
             btnBitacoras.addActionListener(e ->
-                    JOptionPane.showMessageDialog(pantalla, "Bitácoras (pendiente)"));
+                    HerramientasBitacoras.abrir(pantalla, usuarioId, sucursalId)
+            );
+        }
+
 
         // Reloj + tabla + búsqueda
         iniciarReloj();
