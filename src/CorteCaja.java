@@ -14,8 +14,6 @@ import java.sql.Timestamp;
 import java.time.*;
 
 
-
-/** Corte de caja – JDialog compacto con totales y tabla de movimientos del día. */
 public class CorteCaja {
     // Zona horaria oficial para Tepic/Nayarit
     private static final ZoneId ZONA_TEPIC = ZoneId.of("America/Mazatlan");
@@ -53,7 +51,6 @@ public class CorteCaja {
     // formato
     private static final DateTimeFormatter DF_FECHA   = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DF_FECHAHH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
 
     // Colores (coinciden con InterfazCajero)
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
@@ -101,7 +98,7 @@ public class CorteCaja {
 
     private void aplicarEstilo() {
         if (main != null) main.setBackground(BG_CANVAS);
-        if (lbl1  != null) lbl1.setBorder(new MatteBorder(0,0,1,0, BORDER_SOFT));
+        if (lbl1  != null) lbl1.setBorder(new MatteBorder(0,0,2,0, BORDER_SOFT));
 
         stylePrimaryButton(btnContarEfectivoButton);
         stylePrimaryButton(btnExportarCSV);
@@ -277,7 +274,7 @@ public class CorteCaja {
 
         double fondoInicial = 0.0;
         double salidas      = 0.0;
-        double entradasCaja = 0.0;   // ← ENTRADAS de caja_movimientos (sin INICIO)
+        double entradasCaja = 0.0;
         double ventasEfe    = 0.0;
         double ventasTrans  = 0.0;
         double ventasTotal  = 0.0;
@@ -374,18 +371,16 @@ public class CorteCaja {
     // ================== EXPORTAR ==================
     private void exportarCSV() {
         JFileChooser fc = new JFileChooser();
-        fc.setDialogTitle("Exportar corte (CSV)");
+        fc.setDialogTitle("Exportar corte");
         fc.setSelectedFile(new java.io.File("corte_caja_" + LocalDate.now(ZONA_TEPIC) + ".csv"));
         if (fc.showSaveDialog(dialog) != JFileChooser.APPROVE_OPTION) return;
 
         try (FileWriter wr = new FileWriter(fc.getSelectedFile())) {
-            // encabezados
             for (int c = 0; c < tblResumen.getColumnCount(); c++) {
                 wr.write(escapeCSV(tblResumen.getColumnName(c)));
                 if (c < tblResumen.getColumnCount() - 1) wr.write(",");
             }
             wr.write("\n");
-            // filas
             for (int r = 0; r < tblResumen.getRowCount(); r++) {
                 for (int c = 0; c < tblResumen.getColumnCount(); c++) {
                     Object v = tblResumen.getValueAt(r, c);
