@@ -50,6 +50,7 @@ public class InterfazCajero implements Refrescable {
     private JTable tblCobros;
     private JButton btnEntrada;
     private JButton btnSalida;
+    private JLabel lblPuesto;
 
 
     // ====== comportamiento ======
@@ -62,6 +63,7 @@ public class InterfazCajero implements Refrescable {
     private String nombreTrabajador;
     private String nombreSucursal;
     private int sucursalId = -1;
+    private String puesto;
 
     // Paginación simple
     private static final int PAGE_SIZE = 300;
@@ -269,41 +271,58 @@ public class InterfazCajero implements Refrescable {
     }
 
     // ========= DATOS DEL CAJERO =========
+    // ========= DATOS DEL CAJERO =========
     private void cargarDatosAsesor() {
         if (usuarioId <= 0) {
-            lblNombre.setText("Cajero");
-            lblSucursal.setText("");
+            if (lblNombre   != null) lblNombre.setText("Cajero");
+            if (lblSucursal != null) lblSucursal.setText("");
+            if (lblPuesto   != null) lblPuesto.setText("");
             sucursalId = -1;
             return;
         }
 
         final String sql = """
-            SELECT COALESCE(u.nombre, t.nombre) AS nombreTrabajador,
-                   s.nombre AS sucursal,
-                   s.id     AS sucursal_id
-            FROM Usuarios u
-            LEFT JOIN trabajadores t ON t.id = u.trabajador_id
-            LEFT JOIN sucursales   s ON s.id = t.sucursal_id
-            WHERE u.id = ?
-            """;
-        try (Connection con = DB.get();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        SELECT 
+            COALESCE(u.nombre, t.nombre, u.usuario) AS nombreTrabajador,
+            s.nombre AS sucursal,
+            s.id     AS sucursal_id,
+            COALESCE(LOWER(r.nombre),
+                     CASE u.rol_id WHEN 1 THEN 'admin'
+                                   WHEN 2 THEN 'cajero'
+                                   WHEN 3 THEN 'asesor'
+                     END,
+                     LOWER(t.puesto)) AS rol_texto
+        FROM Usuarios u
+        LEFT JOIN trabajadores t ON t.id = u.trabajador_id
+        LEFT JOIN sucursales   s ON s.id = t.sucursal_id
+        LEFT JOIN roles        r ON r.id = u.rol_id
+        WHERE u.id = ?
+        """;
+
+        String nombreTrabajador = "Cajero";
+        String nombreSucursal   = "";
+        try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, usuarioId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     nombreTrabajador = rs.getString("nombreTrabajador");
                     nombreSucursal   = rs.getString("sucursal");
                     sucursalId       = rs.getInt("sucursal_id");
+                    puesto           = rs.getString("rol_texto");
+                } else {
+                    sucursalId = -1;
+                    puesto     = "";
                 }
             }
-        } catch (SQLException e) {
-            nombreTrabajador = "Cajero";
-            nombreSucursal   = "";
-            sucursalId       = -1;
+        } catch (SQLException ex) {
+            ex.printStackTrace();
         }
-        lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Cajero");
-        lblSucursal.setText(nombreSucursal != null ? nombreSucursal : "");
+
+        if (lblNombre   != null) lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Cajero");
+        if (lblSucursal != null) lblSucursal.setText(nombreSucursal   != null ? nombreSucursal   : "");
+        if (lblPuesto   != null) lblPuesto.setText(puesto            != null ? puesto            : "");
     }
+
 
 
     // ========= CARGA DE CLIENTES =========
