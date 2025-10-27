@@ -46,6 +46,7 @@ public class PantallaAsesor implements Refrescable {
     private JPanel panelExtra;
     private JTextField tfBuscar;
     private JPanel panelTabla;
+    private JLabel lblPuesto;
 
     // ====== comportamiento ======
     private AutoActualizarTabla autoActualizador;
@@ -56,6 +57,8 @@ public class PantallaAsesor implements Refrescable {
     private int sucursalId = -1;   // <— AÑADE ESTO
     private String nombreTrabajador;
     private String nombreSucursal;
+    private String puesto; // ← 'admin', 'cajero' o 'asesor'
+
 
     // Paginación simple
     private static final int PAGE_SIZE = 300;
@@ -262,39 +265,55 @@ public class PantallaAsesor implements Refrescable {
     // ========= DATOS DEL ASESOR =========
     private void cargarDatosAsesor() {
         if (usuarioId <= 0) {
-            lblNombre.setText("Asesor");
-            lblSucursal.setText("");
-            sucursalId = -1; // <— si no hay sesión, sin sucursal
+            if (lblNombre   != null) lblNombre.setText("Asesor");
+            if (lblSucursal != null) lblSucursal.setText("");
+            if (lblPuesto   != null) lblPuesto.setText("");
+            sucursalId = -1;
             return;
         }
 
         final String sql = """
-        SELECT COALESCE(u.nombre, t.nombre) AS nombreTrabajador,
-               s.nombre AS sucursal,
-               s.id     AS sucursal_id
+        SELECT 
+            COALESCE(u.nombre, t.nombre, u.usuario) AS nombreTrabajador,
+            s.nombre AS sucursal,
+            s.id     AS sucursal_id,
+            COALESCE(LOWER(r.nombre),
+                     CASE u.rol_id WHEN 1 THEN 'admin'
+                                   WHEN 2 THEN 'cajero'
+                                   WHEN 3 THEN 'asesor'
+                     END,
+                     LOWER(t.puesto)) AS rol_texto
         FROM Usuarios u
         LEFT JOIN trabajadores t ON t.id = u.trabajador_id
         LEFT JOIN sucursales   s ON s.id = t.sucursal_id
+        LEFT JOIN roles        r ON r.id = u.rol_id
         WHERE u.id = ?
         """;
-        try (Connection con = DB.get();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+
+        String nombreTrabajador = "Asesor";
+        String nombreSucursal   = "";
+        try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, usuarioId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     nombreTrabajador = rs.getString("nombreTrabajador");
                     nombreSucursal   = rs.getString("sucursal");
-                    sucursalId       = rs.getInt("sucursal_id");  // <— AÑADIDO
+                    sucursalId       = rs.getInt("sucursal_id");
+                    puesto           = rs.getString("rol_texto");
+                } else {
+                    sucursalId = -1;
+                    puesto     = "";
                 }
             }
-        } catch (SQLException e) {
-            nombreTrabajador = "Asesor";
-            nombreSucursal   = "";
-            sucursalId       = -1; // <— fallback
+        } catch (SQLException ex) {
+            ex.printStackTrace();
         }
-        lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Asesor");
-        lblSucursal.setText(nombreSucursal != null ? nombreSucursal : "");
+
+        if (lblNombre   != null) lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Asesor");
+        if (lblSucursal != null) lblSucursal.setText(nombreSucursal   != null ? nombreSucursal   : "");
+        if (lblPuesto   != null) lblPuesto.setText(puesto            != null ? puesto            : "");
     }
+
 
     //FUNCIONALIDAD BOTON MODIFICAR
     private void abrirSeleccionModificar() {
