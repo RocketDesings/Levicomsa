@@ -16,6 +16,7 @@ public class pantallaCajero {
     private JLabel lblTitulo;
     // Asegúrate de añadir este JLabel en el diseñador con este nombre:
     private JLabel lblNombre;
+    private JButton btnCambiarContra;
 
     // Contexto
     private int sucursalId;         // puede resolverse desde BD
@@ -25,6 +26,9 @@ public class pantallaCajero {
     public pantallaCajero(int usuarioId) {
         this.usuarioId = usuarioId;
         this.sucursalId = obtenerSucursalIdDeUsuario(usuarioId); // -1 si no se encuentra
+        btnCambiarContra.addActionListener(e ->
+                new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true)
+        );
         inicializarUI();
         mostrarNombreUsuario(); // llena lblNombre
     }
@@ -43,6 +47,13 @@ public class pantallaCajero {
         frame.setUndecorated(true);
         frame.setContentPane(panelMain);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        JMenuBar mb = new JMenuBar();
+        JMenu mCuenta = new JMenu("Cuenta");
+        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
+        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
+        mCuenta.add(miCambiar);
+        mb.add(mCuenta);
+        frame.setJMenuBar(mb);
         frame.pack();
         frame.setLocationRelativeTo(null);
 

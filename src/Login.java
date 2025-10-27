@@ -155,6 +155,8 @@ public class Login {
     }
 
 
+
+
     /** Guarda NOW() en Usuarios.last_login para el usuario dado. */
     private void registrarLastLogin(int userId) {
         final String sql = "UPDATE Usuarios SET last_login = NOW() WHERE id = ?";
@@ -167,6 +169,7 @@ public class Login {
             System.err.println("[Login] No se pudo actualizar last_login: " + e.getMessage());
         }
     }
+
 
     // ======== DISEÑO: helpers ========
 
@@ -214,6 +217,19 @@ public class Login {
         b.setForeground(Color.WHITE); // texto negro
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
+
+    private boolean debeForzarCambio(int userId) {
+        final String q = "SELECT must_change_password FROM Usuarios WHERE id=?";
+        try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(q)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) == 1;
+            }
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
 
     // Botón redondeado moderno (pinta fondo y mantiene el render del texto)
     static class ModernButtonUI extends BasicButtonUI {
@@ -338,6 +354,14 @@ public class Login {
 
         Sesion s = autenticarUsuario(usuario, password);
         if (s != null) {
+
+            // --- FORZAR CAMBIO DE CONTRASEÑA SI EL ADMIN LO MARCÓ ---
+            if (debeForzarCambio(s.idUsuario)) {
+                new CambiarContrasenaDialog(s.idUsuario, true).setVisible(true);
+                // Si el usuario cerró el diálogo sin cambiar, sigue marcado → no lo dejes pasar
+                if (debeForzarCambio(s.idUsuario)) return;
+            }
+
             JOptionPane.showMessageDialog(null, "Bienvenido " + usuario + " ✅");
             JFrame frameActual = (JFrame) SwingUtilities.getWindowAncestor(mainPanel);
             if (frameActual != null) frameActual.dispose();
@@ -345,12 +369,13 @@ public class Login {
             switch (s.rolId) {
                 case 1 -> new PantallaAdmin(s.idUsuario);
                 case 2 -> new pantallaCajero(s.idUsuario);
-                case 3 -> new PantallaAsesor(s.idUsuario); // <-- ¡aquí va el id del usuario logueado!
+                case 3 -> new PantallaAsesor(s.idUsuario);
                 default -> JOptionPane.showMessageDialog(null, "Rol no soportado: " + s.rolId);
             }
         } else {
             JOptionPane.showMessageDialog(null, "Usuario o contraseña incorrectos");
         }
+
 
     }
 
@@ -414,23 +439,35 @@ public class Login {
     }
 
     /** Comprueba la contraseña: si parece BCrypt y la clase está disponible, la valida; si no, compara en plano. */
-    private boolean comprobarPassword(String plain, String hashOrPlain) {
+    boolean comprobarPassword(String plain, String hashOrPlain) {
         if (hashOrPlain == null || hashOrPlain.isEmpty()) return false;
-        boolean pareceBCrypt = hashOrPlain.startsWith("$2a$") || hashOrPlain.startsWith("$2b$") || hashOrPlain.startsWith("$2y$");
-        if (!pareceBCrypt) return plain.equals(hashOrPlain);
-        try {
-            Class<?> c = Class.forName("org.mindrot.jbcrypt.BCrypt");
-            java.lang.reflect.Method checkpw = c.getMethod("checkpw", String.class, String.class);
-            Object ok = checkpw.invoke(null, plain, hashOrPlain);
-            return (ok instanceof Boolean) && (Boolean) ok;
-        } catch (ClassNotFoundException cnfe) {
-            JOptionPane.showMessageDialog(null,
-                    "Este usuario tiene hash BCrypt pero falta la librería BCrypt (org.mindrot:jbcrypt:0.4).");
-            return false;
-        } catch (Exception e) {
-            e.printStackTrace(); return false;
+
+        // 1) PBKDF2 (nuestro formato)
+        if (hashOrPlain.startsWith("pbkdf2$")) {
+            return Passwords.verify(plain.toCharArray(), hashOrPlain);
         }
+
+        // 2) BCrypt (si tienes usuarios antiguos con BCrypt)
+        boolean pareceBCrypt = hashOrPlain.startsWith("$2a$") || hashOrPlain.startsWith("$2b$") || hashOrPlain.startsWith("$2y$");
+        if (pareceBCrypt) {
+            try {
+                Class<?> c = Class.forName("org.mindrot.jbcrypt.BCrypt");
+                java.lang.reflect.Method checkpw = c.getMethod("checkpw", String.class, String.class);
+                Object ok = checkpw.invoke(null, plain, hashOrPlain);
+                return (ok instanceof Boolean) && (Boolean) ok;
+            } catch (ClassNotFoundException cnfe) {
+                JOptionPane.showMessageDialog(null,
+                        "Este usuario tiene hash BCrypt pero falta la librería BCrypt (org.mindrot:jbcrypt:0.4).");
+                return false;
+            } catch (Exception e) {
+                e.printStackTrace(); return false;
+            }
+        }
+
+        // 3) Legado en claro
+        return plain.equals(hashOrPlain);
     }
+
 
     /** Abre la pantalla correspondiente al rol (soporta PantallaCajero o pantallaCajero). */
     private void abrirPantallaPorRol(int rol) {
