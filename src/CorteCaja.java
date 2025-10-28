@@ -5,14 +5,15 @@ import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.io.FileWriter;
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.sql.Timestamp;
-import java.time.*;
-
 
 public class CorteCaja {
     // Zona horaria oficial para Tepic/Nayarit
@@ -39,7 +40,7 @@ public class CorteCaja {
     private JLabel lblTotalContadores;
     private JLabel lblContado;
     private JLabel lblEntradas;
-
+    private JButton btnHonorarios;
 
     // ==== contexto ====
     private final int sucursalId;
@@ -47,6 +48,9 @@ public class CorteCaja {
 
     // dialog
     private JDialog dialog;
+
+    // referencia para evitar duplicados (Honorarios)
+    private JDialog dlgHonorarios;
 
     // formato
     private static final DateTimeFormatter DF_FECHA   = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -103,6 +107,7 @@ public class CorteCaja {
         stylePrimaryButton(btnContarEfectivoButton);
         stylePrimaryButton(btnExportarCSV);
         styleExitButton(btnCerrarCorte);
+        styleOutlineButton(btnHonorarios);
     }
 
     private void inicializarCabecera() {
@@ -175,6 +180,10 @@ public class CorteCaja {
             btnCerrarCorte.addActionListener(e ->
                     JOptionPane.showMessageDialog(dialog, "Cierre de corte (pendiente implementar persistencia)."));
         }
+        // === abrir Honorarios (simple, sin duplicados) ===
+        if (btnHonorarios != null) {
+            btnHonorarios.addActionListener(e -> abrirHonorarios());
+        }
     }
 
     // ================== CARGA DE DATOS ==================
@@ -231,11 +240,10 @@ public class CorteCaja {
             FROM caja_movimientos m
             WHERE m.sucursal_id = ?
               AND m.fecha >= ? AND m.fecha < ?
-              AND m.cobro_id IS NULL   -- <<< evita duplicar pagos ya listados en COBROS
+              AND m.cobro_id IS NULL   -- evita duplicar pagos ya listados en COBROS
         ) t
         ORDER BY fecha
         """;
-
 
         boolean hayFilas = false;
         try (Connection con = DB.get();
@@ -283,7 +291,7 @@ public class CorteCaja {
         final String qMovs = """
         SELECT
             COALESCE(SUM(CASE WHEN tipo='ENTRADA' AND descripcion LIKE 'INICIO TURNO CAJA%' THEN monto END), 0) AS fondo,
-            COALESCE(SUM(CASE WHEN tipo='SALIDA'  THEN monto END), 0)                                        AS salidas,
+            COALESCE(SUM(CASE WHEN tipo='SALIDA'  THEN monto END), 0)                                           AS salidas,
             COALESCE(SUM(CASE WHEN tipo='ENTRADA' AND descripcion NOT LIKE 'INICIO TURNO CAJA%' THEN monto END), 0) AS entradas
         FROM caja_movimientos
         WHERE sucursal_id = ?
@@ -306,19 +314,19 @@ public class CorteCaja {
             ex.printStackTrace();
         }
 
-        // -- Cobros pagados (1=Efectivo, 3=Transferencia)
-        // -- Cobros pagados: separar servicios vs extras (cliente_id NULL = extras)
+        // -- Cobros pagados: separar por método y servicios vs extras
         final String qCobros = """
-                SELECT 
-                    COALESCE(SUM(CASE WHEN metodo_pago_id = 1 THEN total END), 0)                                      AS efec,
-                    COALESCE(SUM(CASE WHEN metodo_pago_id = 3 THEN total END), 0)                                      AS transf,
-                    COALESCE(SUM(CASE WHEN cliente_id IS NOT NULL THEN total END), 0)                                  AS servicios,
-                    COALESCE(SUM(CASE WHEN cliente_id IS NULL  THEN total END), 0)                                     AS extras
-                FROM cobros
-                WHERE estado='pagado'
-                  AND sucursal_id = ?
-                  AND fecha >= ? AND fecha < ?
-                """;
+            SELECT 
+                COALESCE(SUM(CASE WHEN metodo_pago_id = 1 THEN total END), 0) AS efec,
+                COALESCE(SUM(CASE WHEN metodo_pago_id = 3 THEN total END), 0) AS transf,
+                COALESCE(SUM(CASE WHEN cliente_id IS NOT NULL THEN total END), 0) AS servicios,
+                COALESCE(SUM(CASE WHEN cliente_id IS NULL  THEN total END), 0) AS extras
+            FROM cobros
+            WHERE estado='pagado'
+              AND sucursal_id = ?
+              AND fecha >= ? AND fecha < ?
+        """;
+        double extrasTotal = 0.0;
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(qCobros)) {
             ps.setInt(1, sucursalId);
@@ -328,11 +336,8 @@ public class CorteCaja {
                 if (rs.next()) {
                     ventasEfe    = rs.getDouble("efec");
                     ventasTrans  = rs.getDouble("transf");
-                    ventasTotal  = rs.getDouble("servicios"); // “Cobros (Servicios)”
-                    double extrasTotal = rs.getDouble("extras"); // “Cobros (Extras)”
-
-                    // Pinta “Cobros (Extras)”
-                    pintar(lblExtras, extrasTotal);
+                    ventasTotal  = rs.getDouble("servicios");
+                    extrasTotal  = rs.getDouble("extras");
                 }
             }
         } catch (SQLException ex) {
@@ -340,26 +345,24 @@ public class CorteCaja {
             ex.printStackTrace();
         }
 
-
-        // ——— aquí van exactamente tus requerimientos ———
         // lblIngresosEfectivo = cobros en efectivo + movimientos ENTRADA
         double ingresosEfectivoLbl = ventasEfe + entradasCaja;
 
         // Efectivo teórico y “ingresos totales”
         double efectivoTeorico = fondoInicial + ventasEfe + entradasCaja - salidas;
-        double ingresosTotales = ventasTotal + parseMoney(lblExtras.getText()) + entradasCaja;
-
+        double ingresosTotales = ventasTotal + extrasTotal + entradasCaja;
 
         double contado = parseMoney(lblContado != null ? lblContado.getText() : "0");
         double diferencia = efectivoTeorico - contado;
 
         // Pintar
         pintar(lblFondoInicial,          fondoInicial);
-        pintar(lblIngresosEfectivo,      ingresosEfectivoLbl);  // ← actualizado
+        pintar(lblIngresosEfectivo,      ingresosEfectivoLbl);
         pintar(lblIngresosTransferencia, ventasTrans);
-        pintar(lblEntradas,              entradasCaja);          // ← NUEVO
+        pintar(lblEntradas,              entradasCaja);
         pintar(lblsalidas,               salidas);
         pintar(lblVentas,                ventasTotal);
+        pintar(lblExtras,                extrasTotal);
         pintar(lblIngresosTotales,       ingresosTotales);
         pintar(lblEfectivoTeorico,       efectivoTeorico);
         pintar(lblDiferencia,            diferencia);
@@ -424,6 +427,12 @@ public class CorteCaja {
         b.setBorder(new EmptyBorder(10,18,10,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
+    private void styleOutlineButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new ModernButtonUI(new Color(0,0,0,0), new Color(0,0,0,25), new Color(0,0,0,45), TEXT_PRIMARY, 12, false));
+        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
     private void styleExitButton(JButton b) {
         if (b == null) return;
         Color ROJO_BASE = new Color(0xDC2626);
@@ -479,5 +488,23 @@ public class CorteCaja {
             else setHorizontalAlignment(SwingConstants.LEFT);
             return comp;
         }
+    }
+
+    // ===== Honorarios: abrir simple sin duplicar =====
+    private void abrirHonorarios() {
+        if (dlgHonorarios != null && dlgHonorarios.isDisplayable()) {
+            dlgHonorarios.toFront();
+            dlgHonorarios.requestFocus();
+            return;
+        }
+        // Debes tener un factory estático en tu clase HonorariosCajero
+        // con la firma: createDialog(Window owner, int sucursalId, int usuarioId)
+        dlgHonorarios = HonorariosCajero.createDialog(dialog, sucursalId, usuarioId);
+        dlgHonorarios.addWindowListener(new WindowAdapter() {
+            @Override public void windowClosed (WindowEvent e) { dlgHonorarios = null; }
+            @Override public void windowClosing(WindowEvent e) { dlgHonorarios = null; }
+        });
+        dlgHonorarios.setLocationRelativeTo(dialog != null && dialog.isShowing() ? dialog : null);
+        dlgHonorarios.setVisible(true);
     }
 }

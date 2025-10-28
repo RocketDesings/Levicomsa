@@ -52,6 +52,7 @@ public class InterfazCajero implements Refrescable {
     private JButton btnSalida;
     private JLabel lblPuesto;
     private JButton btnEnviarCobro;
+    private JButton btnCambiarContra;
 
 
     // ====== comportamiento ======
@@ -130,6 +131,7 @@ public class InterfazCajero implements Refrescable {
         btnRealizarCobro.addActionListener(e ->
                 RealizarCobro.mostrar(pantalla, sucursalId, usuarioId)
         );
+
         // Cobrar (habilita según sucursal)
         if (btnEnviarCobro != null) {
             btnEnviarCobro.addActionListener(e -> {
