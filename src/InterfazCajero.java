@@ -51,6 +51,7 @@ public class InterfazCajero implements Refrescable {
     private JButton btnEntrada;
     private JButton btnSalida;
     private JLabel lblPuesto;
+    private JButton btnEnviarCobro;
 
 
     // ====== comportamiento ======
@@ -129,6 +130,16 @@ public class InterfazCajero implements Refrescable {
         btnRealizarCobro.addActionListener(e ->
                 RealizarCobro.mostrar(pantalla, sucursalId, usuarioId)
         );
+        // Cobrar (habilita según sucursal)
+        if (btnEnviarCobro != null) {
+            btnEnviarCobro.addActionListener(e -> {
+                if (sucursalId <= 0) {
+                    JOptionPane.showMessageDialog(pantalla, "No se detectó sucursal del usuario.");
+                    return;
+                }
+                EnviarCobro.mostrar(sucursalId, usuarioId);
+            });
+        }
 
         iniciarReloj();
         configurarTabla();
