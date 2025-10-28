@@ -52,7 +52,7 @@ public class EnviarCobro {
         f.pack();
         f.setLocationRelativeTo(null);
 
-        // estilos mínimos
+        // estilos mínimos (sin tocar lógica)
         if (btnEnviar!=null){ btnEnviar.setBackground(new Color(0x0E7C0E)); btnEnviar.setForeground(Color.WHITE); }
         if (btnCancelar!=null){ btnCancelar.setBackground(new Color(0xB00020)); btnCancelar.setForeground(Color.WHITE); }
         if (lblPrecioSugerido!=null){ lblPrecioSugerido.setForeground(new Color(0x0E7C0E)); }
@@ -105,19 +105,44 @@ public class EnviarCobro {
     }
 
     // ======== CATEGORÍAS / SERVICIOS ========
+    /** Devuelve true si el usuario puede ver la categoría “Contabilidad”. */
+    private boolean puedeVerContabilidad() {
+        int rol = -1;
+        final String sql = "SELECT rol_id FROM Usuarios WHERE id=?";
+        try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, usuarioId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) rol = rs.getInt(1);
+            }
+        } catch (SQLException ignored) {}
+        return rol == 1 || rol == 4 || rol == 5;
+    }
+
     private void cargarCategorias() {
         DefaultComboBoxModel<IdNombre> model = new DefaultComboBoxModel<>();
         if (cmbCategoria != null) cmbCategoria.setModel(model);
 
-        final String sql = "SELECT id, nombre FROM categorias_servicio WHERE activo=1 ORDER BY nombre";
+        boolean verContab = puedeVerContabilidad();
+
+        // Si NO puede ver contabilidad, la excluimos por nombre (case-insensitive)
+        final String sql = """
+                SELECT id, nombre
+                FROM categorias_servicio
+                WHERE activo=1
+                  AND (LOWER(nombre) <> 'contabilidad' OR ?)
+                ORDER BY nombre
+                """;
         try (Connection con = DB.get();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) model.addElement(new IdNombre(rs.getInt(1), rs.getString(2)));
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setBoolean(1, verContab); // si true → no filtra; si false → excluye "contabilidad"
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) model.addElement(new IdNombre(rs.getInt(1), rs.getString(2)));
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(panelMain, "No se pudieron cargar categorías:\n" + ex.getMessage());
         }
+
         if (model.getSize() > 0 && cmbCategoria != null) cmbCategoria.setSelectedIndex(0);
         cargarServiciosPorCategoria();
     }
@@ -224,7 +249,7 @@ public class EnviarCobro {
             }
 
             con.commit();
-            JOptionPane.showMessageDialog(panelMain, "Cobro creado (Pendiente) para " + txtCliente.getText());
+            JOptionPane.showMessageDialog(panelMain, "Cobro creado (Pendiente) para " + (txtCliente != null ? txtCliente.getText() : "cliente"));
             if (owner != null) owner.dispose();
 
         } catch (Exception ex) {
