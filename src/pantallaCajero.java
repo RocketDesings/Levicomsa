@@ -26,9 +26,6 @@ public class pantallaCajero {
     public pantallaCajero(int usuarioId) {
         this.usuarioId = usuarioId;
         this.sucursalId = obtenerSucursalIdDeUsuario(usuarioId); // -1 si no se encuentra
-        btnCambiarContra.addActionListener(e ->
-                new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true)
-        );
         inicializarUI();
         mostrarNombreUsuario(); // llena lblNombre
     }
