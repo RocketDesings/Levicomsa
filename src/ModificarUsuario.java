@@ -125,6 +125,7 @@ public class ModificarUsuario {
             JOptionPane.showMessageDialog(panelMain, "Selecciona un usuario.");
             return;
         }
+
         String nuevoUsuario = tx(txtNombre);
         String nuevaPass    = tx(txtContrasena);
         int    activo       = parseActivo(cmbActivo);
@@ -134,21 +135,24 @@ public class ModificarUsuario {
             return;
         }
         if (existeUsuarioConLoginExcepto(nuevoUsuario, currentUserId)) {
-            JOptionPane.showMessageDialog(panelMain,
-                    "Ese nombre de usuario ya existe. Elige otro.");
+            JOptionPane.showMessageDialog(panelMain, "Ese nombre de usuario ya existe. Elige otro.");
             return;
         }
 
         // Construye el UPDATE dinámico (no cambiar contraseña si viene vacía)
         String sql;
+        String hashNueva = null;
         if (nuevaPass.isBlank()) {
             sql = "UPDATE Usuarios SET usuario=?, activo=?, actualizado_en=NOW() WHERE id=?";
         } else {
-            sql = "UPDATE Usuarios SET usuario=?, `contraseña`=?, activo=?, actualizado_en=NOW() WHERE id=?";
+            hashNueva = Passwords.hash(nuevaPass.toCharArray());
+            sql = "UPDATE Usuarios SET usuario=?, password_hash=?, `contraseña`='', "
+                    + "must_change_password=1, last_password_change=NULL, "
+                    + "activo=?, actualizado_en=NOW() WHERE id=?";
         }
 
         try (Connection con = DB.get()) {
-            // variables de sesión para triggers/bitácora
+            // variables de sesión para triggers/bitácora (si las usas)
             if (actorUsuarioId > 0) try (PreparedStatement p = con.prepareStatement("SET @app_user_id=?")) {
                 p.setInt(1, actorUsuarioId); p.executeUpdate();
             }
@@ -159,13 +163,18 @@ public class ModificarUsuario {
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 int idx = 1;
                 ps.setString(idx++, nuevoUsuario);
-                if (!nuevaPass.isBlank()) ps.setString(idx++, nuevaPass);
+                if (!nuevaPass.isBlank()) ps.setString(idx++, hashNueva);
                 ps.setInt(idx++, activo);
                 ps.setInt(idx  , currentUserId);
 
                 int n = ps.executeUpdate();
                 if (n > 0) {
-                    JOptionPane.showMessageDialog(panelMain, "Usuario modificado correctamente.");
+                    if (nuevaPass.isBlank()) {
+                        JOptionPane.showMessageDialog(panelMain, "Usuario modificado correctamente.");
+                    } else {
+                        JOptionPane.showMessageDialog(panelMain,
+                                "Contraseña temporal asignada.\nEl usuario deberá cambiarla al iniciar sesión.");
+                    }
                     if (onSaved != null) onSaved.run();
                     cerrar();
                 } else {
@@ -175,6 +184,11 @@ public class ModificarUsuario {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(panelMain, "Error BD: " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            // Limpia el campo visual por seguridad
+            txtContrasena.setText("");
+            // (opcional) borra el String de la variable local
+            nuevaPass = "";
         }
     }
 

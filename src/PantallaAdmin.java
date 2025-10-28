@@ -47,6 +47,7 @@ public class PantallaAdmin implements Refrescable {
     private JButton btnAdministracion;
     private JButton btnBitacoras;
     private JLabel lblPuesto;              // ← mostrará el puesto desde BD
+    private JButton btnCambiarContra;
     private JButton buscarButton;
 
     // ====== comportamiento ======
@@ -91,6 +92,15 @@ public class PantallaAdmin implements Refrescable {
         pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // Menú "Cuenta" → Cambiar contraseña…
+        JMenuBar mb = new JMenuBar();
+        JMenu mCuenta = new JMenu("Cuenta");
+        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
+        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
+        mCuenta.add(miCambiar);
+        mb.add(mCuenta);
+        pantalla.setJMenuBar(mb);
+
 
         // Iconos (si tienes helper UiImages)
         try {
@@ -162,6 +172,10 @@ public class PantallaAdmin implements Refrescable {
         autoActualizador.iniciar();
 
         if (tfBuscar != null) SwingUtilities.invokeLater(() -> tfBuscar.requestFocusInWindow());
+
+        btnCambiarContra.addActionListener(e ->
+                new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true)
+        );
     }
 
     // ====================== THEME / ESTILO (igual a Asesor) ======================
