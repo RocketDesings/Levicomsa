@@ -3,9 +3,12 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
@@ -23,7 +26,7 @@ public class PantallaAdmin implements Refrescable {
     // ====== componentes (de tu .form) ======
     private JFrame pantalla;
     private JPanel panelMain;
-    private JTable table1;
+    private JTable tblAsesor;
     private JButton btnAgregarCliente;
     private JButton btnModificarCliente;
     private JButton btnCobrar;
@@ -48,6 +51,11 @@ public class PantallaAdmin implements Refrescable {
     private JButton btnBitacoras;
     private JLabel lblPuesto;              // ← mostrará el puesto desde BD
     private JButton btnCambiarContra;
+    private JButton btnConsultarCliente;
+    private JScrollPane scrTabla;
+    private JPanel panelTabla;
+    private JPanel panelInfo1;
+    private JPanel panelLogoHora;
     private JButton buscarButton;
 
     // ====== comportamiento ======
@@ -73,14 +81,17 @@ public class PantallaAdmin implements Refrescable {
     private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
     private static final Color BG_CANVAS    = new Color(0xF3F4F6);
-    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
-    private static final Color TEXT_MUTED   = new Color(0x6B7280);
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
     private static final Color BORDER_FOCUS = new Color(0x059669);
     private static final Color TABLE_ALT    = new Color(0xF9FAFB);
     private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
     private static final Color TABLE_SEL_TX = TEXT_PRIMARY;
+
+    // hover visual para la tabla
+    private int hoverRow = -1;
 
     // ---------- constructores ----------
     public PantallaAdmin() { this(-1); }
@@ -92,15 +103,6 @@ public class PantallaAdmin implements Refrescable {
         pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Menú "Cuenta" → Cambiar contraseña…
-        JMenuBar mb = new JMenuBar();
-        JMenu mCuenta = new JMenu("Cuenta");
-        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
-        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
-        mCuenta.add(miCambiar);
-        mb.add(mCuenta);
-        pantalla.setJMenuBar(mb);
-
 
         // Iconos (si tienes helper UiImages)
         try {
@@ -122,15 +124,27 @@ public class PantallaAdmin implements Refrescable {
             @Override public void windowClosed (WindowEvent e)  { stopAuto(); }
         });
 
-        // Tema / estilos (idéntico a Asesor)
+        // Tema / estilos
         applyTheme();
 
         pantalla.pack();
         pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
-
-        // Acciones (no tocamos lógica, sólo estilos)
+        //TIPOFRAFIA
+        Font fText  = new Font("Segoe UI", Font.PLAIN, 16);
+        Font fTitle = new Font("Segoe UI", Font.BOLD, 22);
+        if (btnAgregarCliente != null) btnAgregarCliente.setFont(fText);
+        if (btnCobrar != null) btnCobrar.setFont(fText);
+        if (btnCambiarContra != null) btnCambiarContra.setFont(fText);
+        if (btnAdministracion != null) btnAdministracion.setFont(fText);
+        if (btnBitacoras != null) btnBitacoras.setFont(fText);
+        if (btnConsultarCliente != null) btnConsultarCliente.setFont(fText);
+        if (btnModificarCliente != null) btnModificarCliente.setFont(fText);
+        if (btnEliminar != null) btnEliminar.setFont(fText);
+        if (btnSalir != null) btnSalir.setFont(fText);
+        // Acciones (sin tocar lógica)
         if (btnSalir != null) btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
+        if (btnConsultarCliente != null) btnConsultarCliente.addActionListener(e -> abrirConsultarCliente());
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
         if (btnEliminar != null) btnEliminar.addActionListener(e -> eliminarCliente());
@@ -147,14 +161,13 @@ public class PantallaAdmin implements Refrescable {
             );
         }
 
-
         // Reloj + tabla + búsqueda
         iniciarReloj();
         configurarTabla();
         cablearBusquedaInline();
 
         // Cargar datos de usuario (incluye puesto) y clientes
-        cargarDatosAdmin();     // ← aquí seteamos lblPuesto desde BD
+        cargarDatosAdmin();
         cargarClientesDesdeBD();
 
         // Cobrar (habilita según sucursal)
@@ -178,44 +191,79 @@ public class PantallaAdmin implements Refrescable {
         );
     }
 
-    // ====================== THEME / ESTILO (igual a Asesor) ======================
+    // ====================== THEME / ESTILO ======================
     private void applyTheme() {
-        // Fondo principal
-        if (panelMain != null) panelMain.setBackground(BG_CANVAS);
+        // Fuente global Segoe UI (no rompe si no existe)
+        try {
+            setUIFont(new Font("Segoe UI", Font.BOLD, 13));
+        } catch (Exception ignore) {}
 
-        // Tipografías
+        // Fondo principal
+        if (panelMain != null) panelMain.setBackground(new Color(255, 255, 255));
+
+        // Tarjetas con sombra y borde redondeado
+        decorateAsCard(panelInfo);
+        decorateAsCard(panelExtra);
+        decorateAsCard(panelAdmin);
+        decorateAsCard(panelBotones);
+        decorateAsCard(panelTabla);
+        decorateAsCard(panelInfo1);
+        decorateAsCard(panelLogoHora);
+        decorateAsCard(panelBusqueda);
+
+        // Scrollbars modernos
+        if (scrTabla != null) {
+            scrTabla.getVerticalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTabla.getHorizontalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTabla.setBorder(new MatteBorder(1,1,1,1,BORDER_SOFT));
+            scrTabla.getViewport().setBackground(CARD_BG);
+        }
+
+        // Tipografías y jerarquía visual
         if (lblSlogan != null) {
-            lblSlogan.setText("<html>Comprometidos con tu tranquilidad,<br>ofreciéndote soluciones a la medida de tus necesidades.</html>");
-            lblSlogan.setFont(new Font("Segoe UI", Font.BOLD, 30));
+            lblSlogan.setText("<html>Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de tus necesidades.</html>");
+            lblSlogan.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
             lblSlogan.setForeground(TEXT_MUTED);
         }
-        if (lblTitulo   != null) { lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 70)); lblTitulo.setForeground(TEXT_PRIMARY); }
-        if (lblNombre   != null) { lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 18)); lblNombre.setForeground(TEXT_PRIMARY); }
-        if (lblSucursal != null) { lblSucursal.setFont(new Font("Segoe UI", Font.BOLD, 30)); lblSucursal.setForeground(TEXT_PRIMARY); }
-        if (lblPuesto   != null) { lblPuesto.setFont(new Font("Segoe UI", Font.BOLD, 1)); lblPuesto.setForeground(TEXT_PRIMARY); }
+        if (lblTitulo   != null) { lblTitulo.setFont(new Font("Segoe UI Black", Font.BOLD, 54)); lblTitulo.setForeground(TEXT_PRIMARY); }
+        if (lblNombre   != null) { lblNombre.setFont(new Font("Segoe UI Semibold", Font.BOLD, 24)); lblNombre.setForeground(TEXT_PRIMARY); }
+        if (lblSucursal != null) { lblSucursal.setFont(new Font("Segoe UI Semibold", Font.BOLD, 30)); lblSucursal.setForeground(TEXT_PRIMARY); }
+        if (lblPuesto   != null) { lblPuesto.setFont(new Font("Segoe UI", Font.BOLD, 20)); lblPuesto.setForeground(TEXT_MUTED); } // antes 1pt
 
-        // Botones (mismos estilos)
-        if (btnAgregarCliente != null) stylePrimaryButton(btnAgregarCliente);   // verde sólido
-        if (btnModificarCliente != null) styleOutlineButton(btnModificarCliente);
-        if (btnCobrar != null) styleOutlineButton(btnCobrar);
-        if (btnAdministracion != null) styleOutlineButton(btnAdministracion);
-        if (btnBitacoras != null) styleOutlineButton(btnBitacoras);
-
-        // Peligro
+        // Botones
+        if (btnAgregarCliente != null) stylePrimaryButton(btnAgregarCliente);
+        if (btnModificarCliente != null) styleGhostButton(btnModificarCliente);
+        if (btnConsultarCliente != null) styleGhostButton(btnConsultarCliente);
+        if (btnCambiarContra != null) styleGhostButton(btnCambiarContra);
+        if (btnCobrar != null) styleGhostButton(btnCobrar);
+        if (btnAdministracion != null) styleGhostButton(btnAdministracion);
+        if (btnBitacoras != null) styleGhostButton(btnBitacoras);
         if (btnEliminar != null) styleExitButton(btnEliminar);
         if (btnSalir != null) styleExitButton(btnSalir);
 
-        // Search
+        // Buscar
         if (tfBuscar != null) styleSearchField(tfBuscar);
         if (buscarButton != null) {
             buscarButton.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
             buscarButton.setBorder(new EmptyBorder(10,16,10,16));
             buscarButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
+    }
 
-        // Bordes laterales como en Asesor
-        if (panelInfo  != null) panelInfo.setBorder(new MatteBorder(0,2,2,0, new Color(0xD1D5DB)));
-        if (panelExtra != null) panelExtra.setBorder(new MatteBorder(0,0,2,0, new Color(0xD1D5DB)));
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    private void setUIFont(Font f) {
+        var keys = UIManager.getDefaults().keys();
+        while (keys.hasMoreElements()) {
+            Object key = keys.nextElement();
+            Object val = UIManager.get(key);
+            if (val instanceof Font) UIManager.put(key, f);
+        }
     }
 
     private void iniciarReloj() {
@@ -230,25 +278,34 @@ public class PantallaAdmin implements Refrescable {
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        table1.setModel(modelo);
+        tblAsesor.setModel(modelo);
         sorter = new TableRowSorter<>(modelo);
-        table1.setRowSorter(sorter);
-        table1.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        table1.setRowHeight(28);
-        table1.setShowGrid(false);
-        table1.setIntercellSpacing(new Dimension(0, 0));
+        tblAsesor.setRowSorter(sorter);
+        tblAsesor.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        tblAsesor.setRowHeight(30);
+        tblAsesor.setShowGrid(false);
+        tblAsesor.setIntercellSpacing(new Dimension(0, 0));
 
         // Header verde
-        JTableHeader header = table1.getTableHeader();
+        JTableHeader header = tblAsesor.getTableHeader();
         header.setDefaultRenderer(new HeaderRenderer(header.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
-        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 36));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
 
-        // Zebra + selección
-        table1.setDefaultRenderer(Object.class, new ZebraRenderer());
+        // Zebra + selección + hover
+        tblAsesor.setDefaultRenderer(Object.class, new ZebraRenderer());
+        tblAsesor.addMouseMotionListener(new MouseAdapter() {
+            @Override public void mouseMoved(MouseEvent e) {
+                int r = tblAsesor.rowAtPoint(e.getPoint());
+                if (r != hoverRow) { hoverRow = r; tblAsesor.repaint(); }
+            }
+        });
+        tblAsesor.addMouseListener(new MouseAdapter() {
+            @Override public void mouseExited(MouseEvent e) { hoverRow = -1; tblAsesor.repaint(); }
+        });
 
         int[] widths = {220, 140, 160, 110, 160, 140, 260};
-        for (int i = 0; i < Math.min(widths.length, table1.getColumnCount()); i++) {
-            table1.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        for (int i = 0; i < Math.min(widths.length, tblAsesor.getColumnCount()); i++) {
+            tblAsesor.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
     }
 
@@ -349,8 +406,8 @@ public class PantallaAdmin implements Refrescable {
             ps.setInt(2, currentOffset);
 
             try (ResultSet rs = ps.executeQuery()) {
-                DefaultTableModel modelo = (DefaultTableModel) table1.getModel();
-                table1.getTableHeader().setReorderingAllowed(false);
+                DefaultTableModel modelo = (DefaultTableModel) tblAsesor.getModel();
+                tblAsesor.getTableHeader().setReorderingAllowed(false);
                 modelo.setRowCount(0);
 
                 while (rs.next()) {
@@ -418,16 +475,84 @@ public class PantallaAdmin implements Refrescable {
         }
     }
 
+    // Abre la ventana de historial para el cliente seleccionado en la tabla
+    private void abrirConsultarCliente() {
+        int viewRow = tblAsesor.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(pantalla, "Selecciona un cliente de la tabla.");
+            return;
+        }
+        int row = tblAsesor.convertRowIndexToModel(viewRow);
+        DefaultTableModel m = (DefaultTableModel) tblAsesor.getModel();
+
+        String nombre   = safeStr(m.getValueAt(row, 0)); // Nombre
+        String tel      = safeStr(m.getValueAt(row, 1)); // Teléfono
+        String curp     = safeStr(m.getValueAt(row, 2)); // CURP
+        String rfc      = safeStr(m.getValueAt(row, 4)); // RFC
+        String nss      = safeStr(m.getValueAt(row, 5)); // NSS
+
+        int clienteId = resolverClienteId(nombre, curp, rfc, nss, tel);
+        if (clienteId <= 0) {
+            JOptionPane.showMessageDialog(pantalla,
+                    "No se pudo identificar el cliente seleccionado.\n" +
+                            "Asegúrate de que CURP/RFC/NSS estén capturados.");
+            return;
+        }
+        ConsultarCliente.mostrar(pantalla, clienteId, nombre);
+    }
+
+    private String safeStr(Object o){ return o==null? "" : o.toString().trim(); }
+
+    // Busca el id del cliente priorizando identificadores únicos
+    private int resolverClienteId(String nombre, String curp, String rfc, String nss, String tel) {
+        final String qCurp = "SELECT id FROM Clientes WHERE CURP=? LIMIT 1";
+        final String qRfc  = "SELECT id FROM Clientes WHERE RFC=?  LIMIT 1";
+        final String qNss  = "SELECT id FROM Clientes WHERE NSS=?  LIMIT 1";
+        final String qNomTel = "SELECT id FROM Clientes WHERE nombre=? AND telefono=? ORDER BY id DESC LIMIT 1";
+
+        try (Connection con = DB.get()) {
+            if (!curp.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qCurp)) {
+                    ps.setString(1, curp);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+            if (!rfc.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qRfc)) {
+                    ps.setString(1, rfc);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+            if (!nss.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qNss)) {
+                    ps.setString(1, nss);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+            if (!nombre.isBlank() && !tel.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qNomTel)) {
+                    ps.setString(1, nombre);
+                    ps.setString(2, tel);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(pantalla, "Error al buscar cliente: " + ex.getMessage());
+        }
+        return -1;
+    }
+
     private void eliminarCliente() {
-        int fila = table1.getSelectedRow();
+        int fila = tblAsesor.getSelectedRow();
         if (fila == -1) {
             JOptionPane.showMessageDialog(pantalla, "Selecciona un cliente para eliminar.");
             return;
         }
-        fila = table1.convertRowIndexToModel(fila);
+        fila = tblAsesor.convertRowIndexToModel(fila);
 
-        String nombre = table1.getModel().getValueAt(fila, 0).toString();
-        String curp   = table1.getModel().getValueAt(fila, 2).toString(); // si tu PK es id, úsalo mejor
+        String nombre = tblAsesor.getModel().getValueAt(fila, 0).toString();
+        String curp   = tblAsesor.getModel().getValueAt(fila, 2).toString(); // si tu PK es id, úsalo mejor
 
         int ok = JOptionPane.showConfirmDialog(
                 pantalla,
@@ -473,15 +598,15 @@ public class PantallaAdmin implements Refrescable {
         dlgHerramientas.setVisible(true);
     }
 
-    // ========= estilos reutilizables (idénticos a Asesor) =========
+    // ========= estilos reutilizables =========
     private void stylePrimaryButton(JButton b) {
-        b.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
-        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setUI(new ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
-    private void styleOutlineButton(JButton b) {
-        b.setUI(new ModernButtonUI(new Color(0,0,0,0), new Color(0,0,0,25), new Color(0,0,0,45), TEXT_PRIMARY, 12, false));
-        b.setBorder(new EmptyBorder(10,18,10,18));
+    private void styleGhostButton(JButton b) {
+        b.setUI(new ModernButtonUI(new Color(0,0,0,20), new Color(0,0,0,35), new Color(0,0,0,60), TEXT_PRIMARY, 15, false));
+        b.setBorder(new EmptyBorder(10,28,10,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
     private void styleExitButton(JButton b) {
@@ -525,6 +650,9 @@ public class PantallaAdmin implements Refrescable {
             if (sel) {
                 comp.setBackground(TABLE_SEL_BG);
                 comp.setForeground(TABLE_SEL_TX);
+            } else if (r == hoverRow) {
+                comp.setBackground(new Color(0xEEF9F2)); // hover sutil
+                comp.setForeground(TEXT_PRIMARY);
             } else {
                 comp.setBackground((r % 2 == 0) ? Color.WHITE : TABLE_ALT);
                 comp.setForeground(TEXT_PRIMARY);
@@ -556,7 +684,34 @@ public class PantallaAdmin implements Refrescable {
         }
     }
 
-    private static class ModernButtonUI extends javax.swing.plaf.basic.BasicButtonUI {
+    // Borde con sombra + esquinas redondeadas para “cards”
+    static class CompoundRoundShadowBorder extends EmptyBorder {
+        private final int arc;
+        private final Color border;
+        private final Color shadow;
+        public CompoundRoundShadowBorder(int arc, Color border, Color shadow) {
+            super(12,12,12,12);
+            this.arc = arc; this.border = border; this.shadow = shadow;
+        }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // sombra suave
+            g2.setColor(shadow);
+            for (int i=0;i<8;i++) {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.08f));
+                g2.fillRoundRect(x+2+i, y+4+i, w-4, h-6, arc, arc);
+            }
+            // fondo (lo pinta el panel) — aquí sólo el borde
+            g2.setComposite(AlphaComposite.SrcOver);
+            g2.setColor(border);
+            g2.drawRoundRect(x+1, y+1, w-3, h-3, arc, arc);
+            g2.dispose();
+        }
+    }
+
+    private static class ModernButtonUI extends BasicButtonUI {
         private final Color base, hover, pressed, text;
         private final int radius;
         private final boolean filled;
@@ -589,9 +744,9 @@ public class PantallaAdmin implements Refrescable {
                 g2.setColor(new Color(0,0,0,25));
                 g2.draw(rr);
             } else {
-                g2.setColor(new Color(fill.getRed(), fill.getGreen(), fill.getBlue(), 35));
+                g2.setColor(new Color(fill.getRed(), fill.getGreen(), fill.getBlue(), 25));
                 g2.fill(rr);
-                g2.setColor(new Color(b.getForeground().getRed(), b.getForeground().getGreen(), b.getForeground().getBlue(), 160));
+                g2.setColor(new Color(0,0,0,60));
                 g2.draw(rr);
             }
 
@@ -602,6 +757,33 @@ public class PantallaAdmin implements Refrescable {
             g2.setColor(text);
             g2.drawString(b.getText(), tx, ty);
 
+            g2.dispose();
+        }
+    }
+
+    // Scrollbars finos y redondeados
+    private static class SmoothScrollBarUI extends BasicScrollBarUI {
+        @Override protected void configureScrollBarColors() {
+            this.thumbColor = new Color(0xCBD5E1);
+            this.trackColor = new Color(0xF1F5F9);
+        }
+        @Override protected Dimension getMinimumThumbSize() { return new Dimension(8, 40); }
+        @Override protected JButton createDecreaseButton(int orientation) { return botonVacio(); }
+        @Override protected JButton createIncreaseButton(int orientation) { return botonVacio(); }
+        private JButton botonVacio() {
+            JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setOpaque(false); b.setBorder(null); return b;
+        }
+        @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) {
+            Graphics2D g2=(Graphics2D)g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(r.x+2, r.y+2, r.width-4, r.height-4, 8, 8);
+            g2.dispose();
+        }
+        @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) {
+            Graphics2D g2=(Graphics2D)g.create();
+            g2.setColor(trackColor);
+            g2.fillRoundRect(r.x, r.y, r.width, r.height, 8, 8);
             g2.dispose();
         }
     }

@@ -48,6 +48,7 @@ public class PantallaAsesor implements Refrescable {
     private JPanel panelTabla;
     private JLabel lblPuesto;
     private JButton btnCambiarContra;
+    private JButton btnConsultarCliente;
 
     // ====== comportamiento ======
     private AutoActualizarTabla autoActualizador;
@@ -89,14 +90,6 @@ public class PantallaAsesor implements Refrescable {
         UiImages.setIcon(lblIcono, "/images/levicomsa.png",150);
         UiImages.setIcon(lblImagen, "/images/usuario.png",100);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        JMenuBar mb = new JMenuBar();
-        JMenu mCuenta = new JMenu("Cuenta");
-        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
-        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
-        mCuenta.add(miCambiar);
-        mb.add(mCuenta);
-        pantalla.setJMenuBar(mb);
-
 
         // Fullscreen (maximizada, no exclusiva → no minimiza al abrir diálogos propios)
         pantalla.setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -126,6 +119,7 @@ public class PantallaAsesor implements Refrescable {
         pantalla.setVisible(true);
 
         // Acciones
+        btnConsultarCliente.addActionListener(e -> abrirConsultarCliente());
         btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
         btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
@@ -345,6 +339,75 @@ public class PantallaAsesor implements Refrescable {
             JOptionPane.showMessageDialog(pantalla, "No se pudo abrir la selección: " + ex.getMessage());
         }
     }
+    //FUNCIONALIDAD BOTON CONSULTAR CLIENTE
+    // Abre la ventana de historial para el cliente seleccionado en la tabla
+    private void abrirConsultarCliente() {
+        int viewRow = tblAsesor.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(pantalla, "Selecciona un cliente de la tabla.");
+            return;
+        }
+        int row = tblAsesor.convertRowIndexToModel(viewRow);
+        DefaultTableModel m = (DefaultTableModel) tblAsesor.getModel();
+
+        String nombre   = safeStr(m.getValueAt(row, 0)); // Nombre
+        String tel      = safeStr(m.getValueAt(row, 1)); // Teléfono
+        String curp     = safeStr(m.getValueAt(row, 2)); // CURP
+        String rfc      = safeStr(m.getValueAt(row, 4)); // RFC
+        String nss      = safeStr(m.getValueAt(row, 5)); // NSS
+
+        int clienteId = resolverClienteId(nombre, curp, rfc, nss, tel);
+        if (clienteId <= 0) {
+            JOptionPane.showMessageDialog(pantalla,
+                    "No se pudo identificar el cliente seleccionado.\n" +
+                            "Asegúrate de que CURP/RFC/NSS estén capturados.");
+            return;
+        }
+        ConsultarCliente.mostrar(pantalla, clienteId, nombre);
+    }
+
+    private String safeStr(Object o){ return o==null? "" : o.toString().trim(); }
+
+    // Busca el id del cliente priorizando identificadores únicos
+    private int resolverClienteId(String nombre, String curp, String rfc, String nss, String tel) {
+        final String qCurp = "SELECT id FROM Clientes WHERE CURP=? LIMIT 1";
+        final String qRfc  = "SELECT id FROM Clientes WHERE RFC=?  LIMIT 1";
+        final String qNss  = "SELECT id FROM Clientes WHERE NSS=?  LIMIT 1";
+        final String qNomTel = "SELECT id FROM Clientes WHERE nombre=? AND telefono=? ORDER BY id DESC LIMIT 1";
+
+        try (Connection con = DB.get()) {
+            if (!curp.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qCurp)) {
+                    ps.setString(1, curp);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+            if (!rfc.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qRfc)) {
+                    ps.setString(1, rfc);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+            if (!nss.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qNss)) {
+                    ps.setString(1, nss);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+            if (!nombre.isBlank() && !tel.isBlank()) {
+                try (PreparedStatement ps = con.prepareStatement(qNomTel)) {
+                    ps.setString(1, nombre);
+                    ps.setString(2, tel);
+                    try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return rs.getInt(1); }
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(pantalla, "Error al buscar cliente: " + ex.getMessage());
+        }
+        return -1;
+    }
+
     // ========= CARGA DE CLIENTES =========
     public void cargarClientesDesdeBD() {
         final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo " +

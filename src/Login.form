@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="Login">
-  <grid id="27dc6" binding="mainPanel" layout-manager="GridLayoutManager" row-count="1" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="0" vgap="0">
-    <margin top="0" left="0" bottom="5" right="5"/>
+  <grid id="27dc6" binding="mainPanel" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="0" vgap="0">
+    <margin top="0" left="0" bottom="0" right="0"/>
     <constraints>
-      <xy x="20" y="20" width="900" height="500"/>
+      <xy x="20" y="20" width="900" height="600"/>
     </constraints>
     <properties>
-      <background color="-852737"/>
-      <maximumSize width="700" height="300"/>
-      <minimumSize width="700" height="300"/>
+      <background color="-1282"/>
+      <focusCycleRoot value="false"/>
+      <inheritsPopupMenu value="false"/>
+      <maximumSize width="400" height="600"/>
+      <minimumSize width="400" height="600"/>
       <name value=""/>
-      <preferredSize width="900" height="500"/>
-      <requestFocusEnabled value="true"/>
+      <opaque value="false"/>
+      <preferredSize width="400" height="600"/>
+      <requestFocusEnabled value="false"/>
+      <verifyInputWhenFocusTarget value="true"/>
+      <visible value="true"/>
     </properties>
     <border type="none"/>
     <children>
-      <grid id="d281c" binding="panelLogo" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+      <grid id="a7ec3" binding="panelInfo" layout-manager="GridLayoutManager" row-count="5" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
         <margin top="0" left="0" bottom="0" right="0"/>
         <constraints>
           <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
@@ -23,46 +28,47 @@
         <properties/>
         <border type="none"/>
         <children>
-          <component id="add2e" class="javax.swing.JLabel" binding="lblLogo">
+          <component id="9e" class="javax.swing.JLabel" binding="lblLogo">
             <constraints>
-              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties>
               <text value=""/>
             </properties>
           </component>
-        </children>
-      </grid>
-      <grid id="a7ec3" binding="panelInfo" layout-manager="GridLayoutManager" row-count="6" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
-        <margin top="0" left="0" bottom="0" right="0"/>
-        <constraints>
-          <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
-        </constraints>
-        <properties/>
-        <border type="none"/>
-        <children>
-          <component id="5a8bc" class="javax.swing.JLabel">
+          <component id="9b158" class="javax.swing.JTextField" binding="txtUsuario">
             <constraints>
-              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+              <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false">
+                <minimum-size width="300" height="50"/>
+                <preferred-size width="300" height="50"/>
+                <maximum-size width="300" height="50"/>
+              </grid>
             </constraints>
             <properties>
-              <focusable value="false"/>
-              <font name="Segoe UI Black" size="30"/>
-              <text value="Bienvenidos a Levicomsa"/>
+              <font name="Segoe UI Semibold" size="24"/>
+              <text value=""/>
+              <toolTipText value="Usuario"/>
             </properties>
           </component>
-          <component id="7b6a9" class="javax.swing.JLabel">
+          <component id="952fc" class="javax.swing.JPasswordField" binding="txtContrasena">
             <constraints>
-              <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+              <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false">
+                <minimum-size width="300" height="50"/>
+                <preferred-size width="300" height="50"/>
+                <maximum-size width="300" height="50"/>
+              </grid>
             </constraints>
             <properties>
-              <font name="Segoe UI Black" size="24"/>
-              <text value="Que tengas un excelente dia"/>
+              <font name="Segoe UI Semibold" size="24"/>
+              <opaque value="true"/>
+              <text value=""/>
+              <verifyInputWhenFocusTarget value="true"/>
+              <visible value="true"/>
             </properties>
           </component>
           <component id="143a6" class="javax.swing.JButton" binding="btnIniciarSesion">
             <constraints>
-              <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false">
+              <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false">
                 <minimum-size width="250" height="50"/>
                 <preferred-size width="250" height="50"/>
                 <maximum-size width="250" height="50"/>
@@ -78,7 +84,7 @@
           </component>
           <component id="3e86d" class="javax.swing.JButton" binding="btnSalir">
             <constraints>
-              <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false">
+              <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false">
                 <minimum-size width="250" height="50"/>
                 <preferred-size width="250" height="50"/>
                 <maximum-size width="250" height="50"/>
@@ -88,33 +94,6 @@
               <font name="Segoe UI Black" size="20"/>
               <margin top="5" left="5" bottom="5" right="5"/>
               <text value="Salir"/>
-            </properties>
-          </component>
-          <component id="952fc" class="javax.swing.JPasswordField" binding="txtContrasena">
-            <constraints>
-              <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="0" indent="0" use-parent-layout="false">
-                <minimum-size width="500" height="50"/>
-                <preferred-size width="500" height="50"/>
-                <maximum-size width="500" height="50"/>
-              </grid>
-            </constraints>
-            <properties>
-              <font name="Segoe UI Semibold" size="24"/>
-              <text value=""/>
-            </properties>
-          </component>
-          <component id="9b158" class="javax.swing.JTextField" binding="txtUsuario">
-            <constraints>
-              <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="0" indent="0" use-parent-layout="false">
-                <minimum-size width="500" height="30"/>
-                <preferred-size width="500" height="50"/>
-                <maximum-size width="500" height="50"/>
-              </grid>
-            </constraints>
-            <properties>
-              <font name="Segoe UI Semibold" size="24"/>
-              <text value=""/>
-              <toolTipText value="Usuario"/>
             </properties>
           </component>
         </children>
