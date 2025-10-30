@@ -355,6 +355,7 @@ public class CorteCaja {
         double contado = parseMoney(lblContado != null ? lblContado.getText() : "0");
         double diferencia = efectivoTeorico - contado;
 
+
         // Pintar
         pintar(lblFondoInicial,          fondoInicial);
         pintar(lblIngresosEfectivo,      ingresosEfectivoLbl);
@@ -363,12 +364,25 @@ public class CorteCaja {
         pintar(lblsalidas,               salidas);
         pintar(lblVentas,                ventasTotal);
         pintar(lblExtras,                extrasTotal);
-        pintar(lblIngresosTotales,       ingresosTotales);
         pintar(lblEfectivoTeorico,       efectivoTeorico);
         pintar(lblDiferencia,            diferencia);
 
+        // 1) Calcula honorarios (60%) de contadores rol 1/4/5 en el rango del corte
+        double honorariosContadores = calcularHonorariosContadores(t0, t1);
+
+// 2) Pinta el label dedicado a contadores
+        pintar(lblTotalContadores, honorariosContadores);
+
+// 3) Resta honorarios del TOTAL (lo que queda para la empresa)
+        double ingresosTotalesNetos = ingresosTotales - honorariosContadores;
+        pintar(lblIngresosTotales, ingresosTotalesNetos);
+
+
+
+
         if (lblContado != null && (lblContado.getText() == null || lblContado.getText().isBlank()))
             lblContado.setText(formatea(0));
+
     }
 
     // ================== EXPORTAR ==================
@@ -507,4 +521,48 @@ public class CorteCaja {
         dlgHonorarios.setLocationRelativeTo(dialog != null && dialog.isShowing() ? dialog : null);
         dlgHonorarios.setVisible(true);
     }
+
+    // === Config para "Servicios contables" ===
+    private static final String SERVICIO_CONTABLE_EXACTO = "Servicios contables";
+    // Solo estos usuarios pueden realizar cobros de ese servicio
+    private static final String CONTADORES_IN = "(1,2,5)";
+
+    /** Suma el 60% de los cobros del rango [t0, t1) hechos por usuarios con rol CONTADOR.
+     *  En tu base: roles de contadores son id 1, 4 y 5. Además, por seguridad, también
+     *  considera nombres que contengan 'contador' (ej. 'Asesor/Contador').
+     */
+    private double calcularHonorariosContadores(java.sql.Timestamp t0, java.sql.Timestamp t1) {
+        final String qHonor = """
+        SELECT COALESCE(SUM(c.total * 0.60), 0) AS total
+        FROM cobros c
+        JOIN Usuarios u ON u.id = c.usuario_id
+        LEFT JOIN roles   r ON r.id = u.rol_id
+        WHERE c.estado = 'pagado'
+          AND c.sucursal_id = ?
+          AND c.fecha >= ? AND c.fecha < ?
+          AND (
+                u.rol_id IN (1, 4, 5)
+                OR LOWER(r.nombre) LIKE '%contador%'
+              )
+    """;
+        try (java.sql.Connection con = DB.get();
+             java.sql.PreparedStatement ps = con.prepareStatement(qHonor)) {
+            ps.setInt(1, sucursalId);        // usa tu variable de sucursal actual
+            ps.setTimestamp(2, t0);
+            ps.setTimestamp(3, t1);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getDouble("total");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            javax.swing.JOptionPane.showMessageDialog(dialog,
+                    "No se pudo calcular honorarios de contadores:\n" + e.getMessage());
+        }
+        return 0.0;
+    }
+
+
+
+
+
 }
