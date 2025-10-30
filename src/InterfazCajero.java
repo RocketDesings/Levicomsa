@@ -142,6 +142,20 @@ public class InterfazCajero implements Refrescable {
                 EnviarCobro.mostrar(sucursalId, usuarioId);
             });
         }
+        // === CAMBIAR CONTRASEÑA ===
+        if (btnCambiarContra != null) {
+            btnCambiarContra.addActionListener(e -> {
+                if (usuarioId <= 0) {
+                    JOptionPane.showMessageDialog(pantalla, "No se detectó el usuario actual.");
+                    return;
+                }
+                // Abre el diálogo reutilizable que ya tienes en el proyecto
+                CambiarContrasenaDialog dlg = new CambiarContrasenaDialog(usuarioId, /*forzado=*/false);
+                dlg.setVisible(true);
+                // no necesitas nada más: el diálogo valida, hashea (Passwords.hash) y actualiza en BD
+            });
+        }
+
 
         iniciarReloj();
         configurarTabla();
