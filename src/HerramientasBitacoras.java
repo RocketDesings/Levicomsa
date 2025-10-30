@@ -21,10 +21,10 @@ public class HerramientasBitacoras {
     private JPanel panelFiltrar;
     private JScrollPane scrDatos;
 
-    private JComboBox<String> cmbMes;       // Mes (texto)
-    private JComboBox<String> cmbFecha;     // Año (uso el nombre original)
-    private JComboBox<Integer> cmbDesde;    // Día desde (1..31)
-    private JComboBox<Integer> cmbHasta;    // Día hasta (1..31)
+    private JComboBox<String>  cmbMes;       // Mes (texto)
+    private JComboBox<String>  cmbFecha;     // Año (uso el nombre original)
+    private JComboBox<Integer> cmbDesde;     // Día desde (1..31)
+    private JComboBox<Integer> cmbHasta;     // Día hasta (1..31)
 
     private JPanel panelOpciones;
     private JCheckBox checkSucursal;
@@ -34,7 +34,7 @@ public class HerramientasBitacoras {
     private JComboBox<ComboItem> cmbSucursal;
     private JComboBox<ComboItem> cmbTrabajador;
     private JCheckBox checkTrabajador;
-    private JComboBox<String> cmbFiltrar; // reservado si lo usas
+    private JComboBox<String> cmbFiltrar; // reservado si decides usarlo
 
     // ----- contexto -----
     private final int usuarioId;
@@ -43,6 +43,7 @@ public class HerramientasBitacoras {
     // ----- estado / ventana -----
     private JDialog dialog;
     private static JDialog instanciaUnica; // evita abrir 2
+    private volatile boolean cargando = false; // evita cargas concurrentes/parpadeos
 
     // ----- formato -----
     private static final DateTimeFormatter DF_FECHA_HH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -115,11 +116,7 @@ public class HerramientasBitacoras {
         tblDatos.setModel(m);
         JTableHeader h = tblDatos.getTableHeader();
         h.setReorderingAllowed(false);
-
-        int[] w = {60, 180, 180, 150, 120, 100, 380};
-        for (int i = 0; i < Math.min(w.length, tblDatos.getColumnCount()); i++) {
-            tblDatos.getColumnModel().getColumn(i).setPreferredWidth(w[i]);
-        }
+        ajustarAnchosTabla();
     }
 
     private void prepararFiltros() {
@@ -176,9 +173,7 @@ public class HerramientasBitacoras {
         btnCSV.addActionListener(e -> exportarCSV());
     }
 
-    private void cablearEventos() {
-        // no-op adicional para combos
-    }
+    private void cablearEventos() { /* no-op extra */ }
 
     private void setHoyPorDefecto() {
         LocalDate hoy = LocalDate.now();
@@ -250,8 +245,12 @@ public class HerramientasBitacoras {
         cmbTrabajador.setEnabled(checkTrabajador.isSelected());
     }
 
-    // ======= Tabla =======
+    // ======= Tabla (sin "Cargando...", carga en background) =======
     private void recargarTabla() {
+        if (cargando) return;          // evita cargas simultáneas / parpadeo
+        cargando = true;
+        setBusy(true);
+
         // año / mes
         int year  = Integer.parseInt((String) cmbFecha.getSelectedItem());
         int month = cmbMes.getSelectedIndex() + 1;
@@ -265,21 +264,22 @@ public class HerramientasBitacoras {
         if (dHasta < 1) dHasta = 1; if (dHasta > maxDia) dHasta = maxDia;
 
         // corrige inversión
-        int dMin = Math.min(dDesde, dHasta);
-        int dMax = Math.max(dDesde, dHasta);
+        final int dMin = Math.min(dDesde, dHasta);
+        final int dMax = Math.max(dDesde, dHasta);
 
-        LocalDate f0 = ym.atDay(dMin);
-        LocalDate f1 = ym.atDay(dMax);
+        final LocalDate f0 = ym.atDay(dMin);
+        final LocalDate f1 = ym.atDay(dMax);
 
-        Timestamp t0 = Timestamp.valueOf(f0.atStartOfDay());
-        Timestamp t1 = Timestamp.valueOf(f1.plusDays(1).atStartOfDay()); // exclusivo
+        final Timestamp t0 = Timestamp.valueOf(f0.atStartOfDay());
+        final Timestamp t1 = Timestamp.valueOf(f1.plusDays(1).atStartOfDay()); // exclusivo
 
-        Integer sucFiltro =
-                (checkSucursal.isSelected() && cmbSucursal.getSelectedItem() instanceof ComboItem itS) ? itS.id : null;
-        Integer trabFiltro =
-                (checkTrabajador.isSelected() && cmbTrabajador.getSelectedItem() instanceof ComboItem itT) ? itT.id : null;
+        ComboItem sucItem  = (checkSucursal.isSelected()  && cmbSucursal.getSelectedItem()  instanceof ComboItem) ? (ComboItem) cmbSucursal.getSelectedItem()  : null;
+        ComboItem trabItem = (checkTrabajador.isSelected() && cmbTrabajador.getSelectedItem() instanceof ComboItem) ? (ComboItem) cmbTrabajador.getSelectedItem() : null;
 
-        String sql = """
+        final Integer sucFiltro  = (sucItem  != null) ? sucItem.id  : null;
+        final Integer trabFiltro = (trabItem != null) ? trabItem.id : null;
+
+        final String sql = """
             SELECT c.id,
                    COALESCE(s.nombre,'') AS sucursal,
                    COALESCE(u.nombre, t.nombre, '') AS usuario,
@@ -295,44 +295,68 @@ public class HerramientasBitacoras {
             WHERE c.estado='pagado'
               AND c.fecha >= ? AND c.fecha < ?
               AND (? IS NULL OR c.sucursal_id = ?)
-              AND (? IS NULL OR t.id          = ?)   -- filtra por TRABAJADOR
+              AND (? IS NULL OR t.id          = ?)
             ORDER BY c.fecha
         """;
 
-        DefaultTableModel m = (DefaultTableModel) tblDatos.getModel();
-        m.setRowCount(0);
+        new SwingWorker<DefaultTableModel, Void>() {
+            @Override
+            protected DefaultTableModel doInBackground() throws Exception {
+                DefaultTableModel m = new DefaultTableModel(
+                        new String[]{"ID","Sucursal","Usuario","Fecha","Método","Total","Notas"}, 0) {
+                    @Override public boolean isCellEditable(int r,int c){ return false; }
+                    @Override public Class<?> getColumnClass(int c){
+                        return switch(c){ case 0 -> Integer.class; case 5 -> Double.class; default -> String.class; };
+                    }
+                };
 
-        try (Connection con = DB.get();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setTimestamp(1, t0);
-            ps.setTimestamp(2, t1);
+                try (Connection con = DB.get();
+                     PreparedStatement ps = con.prepareStatement(sql)) {
+                    ps.setTimestamp(1, t0);
+                    ps.setTimestamp(2, t1);
 
-            if (sucFiltro == null) { ps.setNull(3, Types.INTEGER); ps.setNull(4, Types.INTEGER); }
-            else { ps.setInt(3, sucFiltro); ps.setInt(4, sucFiltro); }
+                    if (sucFiltro == null) { ps.setNull(3, Types.INTEGER); ps.setNull(4, Types.INTEGER); }
+                    else { ps.setInt(3, sucFiltro); ps.setInt(4, sucFiltro); }
 
-            if (trabFiltro == null) { ps.setNull(5, Types.INTEGER); ps.setNull(6, Types.INTEGER); }
-            else { ps.setInt(5, trabFiltro); ps.setInt(6, trabFiltro); }
+                    if (trabFiltro == null) { ps.setNull(5, Types.INTEGER); ps.setNull(6, Types.INTEGER); }
+                    else { ps.setInt(5, trabFiltro); ps.setInt(6, trabFiltro); }
 
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    int id = rs.getInt(1);
-                    String suc = rs.getString(2);
-                    String usuario = rs.getString(3);
-                    Timestamp ts = rs.getTimestamp(4);
-                    String fechaTx = ts != null ? DF_FECHA_HH.format(ts.toLocalDateTime()) : "";
-                    String metodo = rs.getString(5);
-                    double total  = rs.getDouble(6);
-                    String notas  = rs.getString(7);
-                    m.addRow(new Object[]{id, suc, usuario, fechaTx, metodo, total, notas});
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            int id = rs.getInt(1);
+                            String suc = rs.getString(2);
+                            String usuario = rs.getString(3);
+                            Timestamp ts = rs.getTimestamp(4);
+                            String fechaTx = ts != null ? DF_FECHA_HH.format(ts.toLocalDateTime()) : "";
+                            String metodo = rs.getString(5);
+                            double total  = rs.getDouble(6);
+                            String notas  = rs.getString(7);
+                            m.addRow(new Object[]{id, suc, usuario, fechaTx, metodo, total, notas});
+                        }
+                    }
+                }
+                return m;
+            }
+            @Override
+            protected void done() {
+                try {
+                    DefaultTableModel nuevo = get();
+                    tblDatos.setModel(nuevo);
+                    JTableHeader h = tblDatos.getTableHeader();
+                    h.setReorderingAllowed(false);
+                    ajustarAnchosTabla();
+
+                    // refleja selección final por si se “clamp”earon los días
+                    cmbDesde.setSelectedItem(dMin);
+                    cmbHasta.setSelectedItem(dMax);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(dialog, "Error al cargar cobros: " + ex.getMessage());
+                } finally {
+                    setBusy(false);
+                    cargando = false;
                 }
             }
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(dialog, "Error al cargar cobros: " + ex.getMessage());
-        }
-
-        // reflejo por si el usuario dejó un día fuera de rango y fue clamped
-        cmbDesde.setSelectedItem(dMin);
-        cmbHasta.setSelectedItem(dMax);
+        }.execute();
     }
 
     // Refresca los combos de días cuando cambia mes/año
@@ -399,6 +423,21 @@ public class HerramientasBitacoras {
             return "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;
+    }
+
+    private void ajustarAnchosTabla() {
+        int[] w = {60, 180, 180, 150, 120, 100, 380};
+        for (int i = 0; i < Math.min(w.length, tblDatos.getColumnCount()); i++) {
+            tblDatos.getColumnModel().getColumn(i).setPreferredWidth(w[i]);
+        }
+    }
+
+    private void setBusy(boolean busy) {
+        Cursor c = busy ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+                : Cursor.getDefaultCursor();
+        dialog.setCursor(c);
+        tblDatos.setCursor(c);
+        if (btnCSV != null) btnCSV.setEnabled(!busy);
     }
 
     // ======= helpers =======

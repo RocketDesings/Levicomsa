@@ -92,15 +92,6 @@ public class PantallaAdmin implements Refrescable {
         pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        // Menú "Cuenta" → Cambiar contraseña…
-        JMenuBar mb = new JMenuBar();
-        JMenu mCuenta = new JMenu("Cuenta");
-        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
-        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
-        mCuenta.add(miCambiar);
-        mb.add(mCuenta);
-        pantalla.setJMenuBar(mb);
-
 
         // Iconos (si tienes helper UiImages)
         try {
