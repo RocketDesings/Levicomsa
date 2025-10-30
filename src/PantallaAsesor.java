@@ -89,14 +89,6 @@ public class PantallaAsesor implements Refrescable {
         UiImages.setIcon(lblIcono, "/images/levicomsa.png",150);
         UiImages.setIcon(lblImagen, "/images/usuario.png",100);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        JMenuBar mb = new JMenuBar();
-        JMenu mCuenta = new JMenu("Cuenta");
-        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
-        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
-        mCuenta.add(miCambiar);
-        mb.add(mCuenta);
-        pantalla.setJMenuBar(mb);
-
 
         // Fullscreen (maximizada, no exclusiva → no minimiza al abrir diálogos propios)
         pantalla.setExtendedState(JFrame.MAXIMIZED_BOTH);
