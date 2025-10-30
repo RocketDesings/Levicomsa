@@ -1,9 +1,14 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
 import java.io.FileWriter;
 import java.sql.*;
 import java.time.LocalDate;
@@ -47,6 +52,19 @@ public class HerramientasBitacoras {
 
     // ----- formato -----
     private static final DateTimeFormatter DF_FECHA_HH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    // ====== PALETA / TEMA (consistente con PantallaAsesor) ======
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color BG_CANVAS    = new Color(0xF3F4F6);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color TEXT_MUTED   = new Color(0x6B7280);
+    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
 
     // ======= API =======
     /** Abre la ventana evitando duplicados y trayéndola al frente. */
@@ -95,10 +113,57 @@ public class HerramientasBitacoras {
         dialog.setAlwaysOnTop(false);
     }
 
-    // ======= UI =======
+    // ======= UI / ESTILO =======
     private void aplicarEstilo() {
-        if (panelMain != null) panelMain.setBorder(new EmptyBorder(8,8,8,8));
-        if (tblDatos  != null) tblDatos.setRowHeight(26);
+        // fondo general
+        if (panelMain != null) panelMain.setBackground(BG_CANVAS);
+
+        // “tarjetas”
+        decorateAsCard(panelFecha);
+        decorateAsCard(panelFiltrar);
+        decorateAsCard(panelOpciones);
+        decorateAsCard(panelTabla);
+        decorateAsCard(panelTitulo);
+
+        // tipografías básicas
+        Font base = new Font("Segoe UI", Font.PLAIN, 13);
+        UIManager.put("Label.font", base);
+        UIManager.put("ComboBox.font", base);
+        UIManager.put("CheckBox.font", base);
+        UIManager.put("Table.font", base);
+        UIManager.put("TableHeader.font", base.deriveFont(Font.BOLD));
+
+        // botones
+        stylePrimaryButton(btnCSV);
+        styleExitButton(btnSalir);
+
+        // scroll
+        if (scrDatos != null) {
+            scrDatos.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
+            scrDatos.getViewport().setBackground(CARD_BG);
+        }
+
+        // checks / combos colores sutiles
+        if (checkSucursal != null)   checkSucursal.setForeground(TEXT_PRIMARY);
+        if (checkTrabajador != null) checkTrabajador.setForeground(TEXT_PRIMARY);
+        if (cmbMes != null)          cmbMes.setForeground(TEXT_PRIMARY);
+        if (cmbFecha != null)        cmbFecha.setForeground(TEXT_PRIMARY);
+        if (cmbDesde != null)        cmbDesde.setForeground(TEXT_PRIMARY);
+        if (cmbHasta != null)        cmbHasta.setForeground(TEXT_PRIMARY);
+        if (cmbSucursal != null)     cmbSucursal.setForeground(TEXT_PRIMARY);
+        if (cmbTrabajador != null)   cmbTrabajador.setForeground(TEXT_PRIMARY);
+
+        if (tblDatos != null) tblDatos.setRowHeight(26);
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(BorderFactory.createCompoundBorder(
+                new MatteBorder(1,1,1,1, BORDER_SOFT),
+                new EmptyBorder(10,10,10,10)
+        ));
     }
 
     private void prepararTabla() {
@@ -114,8 +179,19 @@ public class HerramientasBitacoras {
             }
         };
         tblDatos.setModel(m);
+
+        // estilos de tabla
+        tblDatos.setShowGrid(false);
+        tblDatos.setIntercellSpacing(new Dimension(0,0));
+        tblDatos.setSelectionBackground(TABLE_SEL_BG);
+        tblDatos.setSelectionForeground(TEXT_PRIMARY);
+        tblDatos.setDefaultRenderer(Object.class, new ZebraRenderer());
+
         JTableHeader h = tblDatos.getTableHeader();
         h.setReorderingAllowed(false);
+        h.setDefaultRenderer(new HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
+        h.setPreferredSize(new Dimension(h.getPreferredSize().width, 34));
+
         ajustarAnchosTabla();
     }
 
@@ -342,8 +418,14 @@ public class HerramientasBitacoras {
                 try {
                     DefaultTableModel nuevo = get();
                     tblDatos.setModel(nuevo);
+
+                    // re-aplicar estilos tras cambiar el modelo
                     JTableHeader h = tblDatos.getTableHeader();
                     h.setReorderingAllowed(false);
+                    h.setDefaultRenderer(new HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
+                    tblDatos.setDefaultRenderer(Object.class, new ZebraRenderer());
+                    tblDatos.setShowGrid(false);
+                    tblDatos.setIntercellSpacing(new Dimension(0,0));
                     ajustarAnchosTabla();
 
                     // refleja selección final por si se “clamp”earon los días
@@ -438,6 +520,103 @@ public class HerramientasBitacoras {
         dialog.setCursor(c);
         tblDatos.setCursor(c);
         if (btnCSV != null) btnCSV.setEnabled(!busy);
+    }
+
+    // ======= estilos reutilizables =======
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
+        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        Color ROJO_BASE = new Color(0xDC2626);
+        Color GRIS_HOV  = new Color(0xD1D5DB);
+        Color GRIS_PRE  = new Color(0x9CA3AF);
+        b.setUI(new ModernButtonUI(ROJO_BASE, GRIS_HOV, GRIS_PRE, Color.BLACK, 12, true));
+        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private static class ModernButtonUI extends BasicButtonUI {
+        private final Color base, hover, pressed, text;
+        private final int radius;
+        private final boolean filled;
+        ModernButtonUI(Color base, Color hover, Color pressed, Color text, int radius, boolean filled) {
+            this.base=base; this.hover=hover; this.pressed=pressed; this.text=text; this.radius=radius; this.filled=filled;
+        }
+        @Override public void installUI (JComponent c) {
+            super.installUI(c);
+            AbstractButton b = (AbstractButton) c;
+            b.setOpaque(false);
+            b.setBorderPainted(false);
+            b.setForeground(text);
+            b.addMouseListener(new MouseAdapter() {});
+        }
+        @Override public void paint(Graphics g, JComponent c) {
+            AbstractButton b = (AbstractButton) c;
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            ButtonModel m = b.getModel();
+            Color fill = base;
+            if (m.isPressed()) fill = pressed;
+            else if (m.isRollover()) fill = hover;
+
+            Shape rr = new RoundRectangle2D.Float(0, 0, b.getWidth(), b.getHeight(), radius * 2f, radius * 2f);
+            if (filled) {
+                g2.setColor(fill);
+                g2.fill(rr);
+                g2.setColor(new Color(0,0,0,25));
+                g2.draw(rr);
+            } else {
+                g2.setColor(new Color(fill.getRed(), fill.getGreen(), fill.getBlue(), 35));
+                g2.fill(rr);
+                g2.setColor(new Color(b.getForeground().getRed(), b.getForeground().getGreen(), b.getForeground().getBlue(), 160));
+                g2.draw(rr);
+            }
+
+            // texto
+            FontMetrics fm = g2.getFontMetrics();
+            int tx = (b.getWidth() - fm.stringWidth(b.getText())) / 2;
+            int ty = (b.getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+            g2.setColor(text);
+            g2.drawString(b.getText(), tx, ty);
+
+            g2.dispose();
+        }
+    }
+
+    private static class HeaderRenderer extends DefaultTableCellRenderer {
+        private final TableCellRenderer base;
+        private final Color bg, fg;
+        HeaderRenderer(TableCellRenderer base, Color bg, Color fg) { this.base=base; this.bg=bg; this.fg=fg; }
+        @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+            Component comp = base.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            comp.setBackground(bg);
+            comp.setForeground(fg);
+            comp.setFont(comp.getFont().deriveFont(Font.BOLD));
+            if (comp instanceof JComponent jc) jc.setBorder(new MatteBorder(0,0,1,0, GREEN_BASE.darker()));
+            return comp;
+        }
+    }
+
+    private class ZebraRenderer extends DefaultTableCellRenderer {
+        @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+            Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            if (sel) {
+                comp.setBackground(TABLE_SEL_BG);
+                comp.setForeground(TEXT_PRIMARY);
+            } else {
+                comp.setBackground((r % 2 == 0) ? Color.WHITE : TABLE_ALT);
+                comp.setForeground(TEXT_PRIMARY);
+            }
+            setBorder(new EmptyBorder(6,8,6,8));
+            if (c == 5 && v instanceof Number) setHorizontalAlignment(SwingConstants.RIGHT);
+            else setHorizontalAlignment(SwingConstants.LEFT);
+            return comp;
+        }
     }
 
     // ======= helpers =======
