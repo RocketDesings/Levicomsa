@@ -391,8 +391,11 @@ public class Login {
                 case 1 -> new PantallaAdmin(s.idUsuario);
                 case 2 -> new pantallaCajero(s.idUsuario);
                 case 3 -> new PantallaAsesor(s.idUsuario);
+                case 4 -> new PantallaAsesor(s.idUsuario);
+                case 5 -> new pantallaCajero(s.idUsuario);
                 default -> JOptionPane.showMessageDialog(null, "Rol no soportado: " + s.rolId);
             }
+
         } else {
             JOptionPane.showMessageDialog(null, "Usuario o contraseña incorrectos");
         }
@@ -480,17 +483,6 @@ public class Login {
 
         // Legado en claro
         return plain.equals(hashOrPlain);
-    }
-
-    /** Abre la pantalla correspondiente al rol (soporta PantallaCajero o pantallaCajero). */
-    private void abrirPantallaPorRol(int rol) {
-        switch (rol) {
-            case 1 -> { abrirFramePorNombre("PantallaAdmin"); }
-            case 2 -> { if (!abrirFramePorNombre("PantallaCajero")) abrirFramePorNombre("pantallaCajero"); }
-            case 3 -> { abrirFramePorNombre("PantallaAsesor"); }
-            case 4 -> { abrirFramePorNombre("PantallaAdmin"); }
-            default -> JOptionPane.showMessageDialog(null, "Rol no soportado: " + rol);
-        }
     }
 
     private boolean abrirFramePorNombre(String className) {
