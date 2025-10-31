@@ -1,4 +1,6 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
@@ -6,7 +8,7 @@ import java.awt.*;
 import java.sql.*;
 
 public class CRUDUsuarios {
-    // --- UI (de tu .form) ---
+    // --- UI del .form ---
     private JPanel panelMain;
     private JPanel panelTabla;
     private JScrollPane scrTablaUsuarios;
@@ -19,7 +21,7 @@ public class CRUDUsuarios {
 
     // --- contexto ---
     private final Window owner;
-    private final int usuarioId;   // quién opera (para triggers si los usas)
+    private final int usuarioId;
     private final int sucursalId;
 
     // --- tabla ---
@@ -34,6 +36,10 @@ public class CRUDUsuarios {
         configurarTabla();
         cargarUsuarios();
 
+        // ======= Estilo igual a CRUDServicios =======
+        compactLookAndFeel();
+
+        // ======= Acciones =======
         if (btnCancelar != null) {
             btnCancelar.addActionListener(e -> {
                 Window w = getOwnerWindow();
@@ -43,10 +49,10 @@ public class CRUDUsuarios {
         if (btnAgregarUsuario != null) {
             btnAgregarUsuario.addActionListener(e -> {
                 JDialog d = AgregarUsuario.createDialog(
-                        getOwnerWindow(),   // owner del diálogo
-                        usuarioId,          // @app_user_id (para triggers, si tienes)
-                        sucursalId,         // @app_sucursal_id
-                        this::cargarUsuarios// refresca la tabla al guardar
+                        getOwnerWindow(),
+                        usuarioId,
+                        sucursalId,
+                        this::cargarUsuarios
                 );
                 d.setVisible(true);
             });
@@ -54,15 +60,14 @@ public class CRUDUsuarios {
         if (btnModificarUsuario != null) {
             btnModificarUsuario.addActionListener(e -> {
                 JDialog d = ModificarUsuario.createDialog(
-                        getOwnerWindow(),     // o tu referencia a Window/JFrame
-                        usuarioId,            // @app_user_id (quien está logueado)
-                        sucursalId,           // @app_sucursal_id
-                        this::cargarUsuarios  // refresca la tabla al guardar
+                        getOwnerWindow(),
+                        usuarioId,
+                        sucursalId,
+                        this::cargarUsuarios
                 );
                 d.setVisible(true);
             });
         }
-
         if (btnEliminarUsuario != null) {
             btnEliminarUsuario.addActionListener(e -> eliminarUsuarioSeleccionado());
         }
@@ -73,10 +78,12 @@ public class CRUDUsuarios {
         CRUDUsuarios ui = new CRUDUsuarios(owner, usuarioId, sucursalId);
         JDialog d = new JDialog(owner, "Usuarios", Dialog.ModalityType.MODELESS);
         d.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-        d.setContentPane(ui.root());
-        d.setMinimumSize(new Dimension(900, 560));
+        d.setContentPane(ui.panelMain);
+        d.setMinimumSize(new Dimension(900, 520));
         d.pack();
-        d.setLocationRelativeTo(owner);
+
+        if (owner != null && owner.isShowing()) d.setLocationRelativeTo(owner);
+        else d.setLocationRelativeTo(null);
         return d;
     }
 
@@ -84,13 +91,11 @@ public class CRUDUsuarios {
     private void configurarTabla() {
         if (tblUsuarios == null) return;
 
-        // Col 0 = ID (oculta), visibles: Usuario, Nombre empleado, Rol, Activo
+        // Col 0 = ID (oculta). Visibles: Usuario, Nombre empleado, Rol, Activo
         String[] cols = {"#", "Usuario", "Nombre empleado", "Rol", "Activo"};
         modelo = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Class<?> getColumnClass(int c) {
-                return (c == 0) ? Integer.class : String.class;
-            }
+            @Override public Class<?> getColumnClass(int c) { return (c == 0) ? Integer.class : String.class; }
         };
         tblUsuarios.setModel(modelo);
         sorter = new TableRowSorter<>(modelo);
@@ -100,6 +105,7 @@ public class CRUDUsuarios {
         tblUsuarios.setShowGrid(false);
         tblUsuarios.setIntercellSpacing(new Dimension(0, 0));
         tblUsuarios.getTableHeader().setReorderingAllowed(false);
+
         JTableHeader h = tblUsuarios.getTableHeader();
         h.setPreferredSize(new Dimension(h.getPreferredSize().width, 32));
 
@@ -107,22 +113,24 @@ public class CRUDUsuarios {
         var idCol = tblUsuarios.getColumnModel().getColumn(0);
         idCol.setMinWidth(0); idCol.setMaxWidth(0); idCol.setPreferredWidth(0);
 
-        int[] widths = {0, 160, 260, 160, 80};
+        int[] widths = {0, 160, 260, 200, 80};
         for (int i = 1; i < Math.min(widths.length, tblUsuarios.getColumnCount()); i++) {
             tblUsuarios.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
+
+        // Zebra renderer y alineaciones
+        ZebraRenderer zebra = new ZebraRenderer(tblUsuarios);
+        tblUsuarios.setDefaultRenderer(Object.class, zebra);
     }
 
-    /** Carga y llena: Usuario, Nombre empleado, Rol (nombre), Activo. */
+    /** Carga: Usuario, Nombre empleado, Rol (nombre), Activo. */
     public final void cargarUsuarios() {
         if (tblUsuarios == null) return;
 
         final String sql = """
             SELECT u.id,
                    u.usuario,
-                   /* nombre del empleado: toma de trabajadores si existe; si no, el de Usuarios */
                    COALESCE(t.nombre, u.nombre) AS empleado,
-                   /* nombre del rol: de tabla roles; si no, muestra 'Rol <id>' */
                    COALESCE(r.nombre, CONCAT('Rol ', u.rol_id)) AS rol,
                    u.activo
             FROM Usuarios u
@@ -142,7 +150,6 @@ public class CRUDUsuarios {
                 String empleado = nvl(rs.getString("empleado"));
                 String rol      = nvl(rs.getString("rol"));
                 String activo   = (rs.getInt("activo") == 1) ? "Sí" : "No";
-
                 modelo.addRow(new Object[]{ id, usuario, empleado, rol, activo });
             }
         } catch (SQLException e) {
@@ -160,14 +167,9 @@ public class CRUDUsuarios {
         return (v instanceof Integer) ? (Integer) v : Integer.valueOf(v.toString());
     }
 
-    // Dentro de CRUDUsuarios
     private void eliminarUsuarioSeleccionado() {
         Integer id = getSelectedUsuarioId();
-        if (id == null) {
-            JOptionPane.showMessageDialog(panelMain, "Selecciona un usuario para eliminar.");
-            return;
-        }
-        // opcional: no permitir que el usuario actual se borre a sí mismo
+        if (id == null) { JOptionPane.showMessageDialog(panelMain, "Selecciona un usuario para eliminar."); return; }
         if (id == usuarioId) {
             JOptionPane.showMessageDialog(panelMain, "No puedes eliminar tu propio usuario mientras estás logueado.");
             return;
@@ -175,8 +177,7 @@ public class CRUDUsuarios {
 
         int ok = JOptionPane.showConfirmDialog(
                 panelMain,
-                "¿Eliminar definitivamente al usuario?\n" +
-                        "La bitácora conservará el historial (usuario_id = NULL).",
+                "¿Eliminar definitivamente al usuario?\nLa bitácora conservará el historial (usuario_id = NULL).",
                 "Confirmar eliminación",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
@@ -185,7 +186,6 @@ public class CRUDUsuarios {
 
         final String sqlDelete = "DELETE FROM Usuarios WHERE id = ?";
         try (Connection con = DB.get()) {
-            // variables de sesión para triggers/bitácora
             if (usuarioId > 0) try (PreparedStatement p = con.prepareStatement("SET @app_user_id=?")) {
                 p.setInt(1, usuarioId); p.executeUpdate();
             }
@@ -198,25 +198,21 @@ public class CRUDUsuarios {
                 int n = ps.executeUpdate();
                 if (n > 0) {
                     JOptionPane.showMessageDialog(panelMain, "Usuario eliminado.");
-                    cargarUsuarios(); // refresca la tabla
+                    cargarUsuarios();
                 } else {
                     JOptionPane.showMessageDialog(panelMain, "No se encontró el usuario.");
                 }
             }
         } catch (SQLException e) {
-            // Si otra FK distinta a las bitácoras bloquea, ofrece desactivar como plan B
             if (isForeignKeyViolation(e)) {
                 int choose = JOptionPane.showConfirmDialog(
                         panelMain,
-                        "El usuario está referenciado por otros registros.\n" +
-                                "¿Deseas DESACTIVARLO (activo=0) en lugar de eliminar?",
+                        "El usuario está referenciado por otros registros.\n¿Deseas DESACTIVARLO (activo=0) en lugar de eliminar?",
                         "Usuario referenciado",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.QUESTION_MESSAGE
                 );
-                if (choose == JOptionPane.YES_OPTION) {
-                    softDeleteUsuario(id);
-                }
+                if (choose == JOptionPane.YES_OPTION) softDeleteUsuario(id);
             } else {
                 JOptionPane.showMessageDialog(panelMain, "Error al eliminar: " + e.getMessage());
             }
@@ -224,7 +220,6 @@ public class CRUDUsuarios {
     }
 
     private static boolean isForeignKeyViolation(SQLException e) {
-        // MySQL: SQLState 23000 / errorCode 1451 o mensaje conteniendo 'foreign key'
         return "23000".equals(e.getSQLState())
                 || e.getErrorCode() == 1451
                 || (e.getMessage() != null && e.getMessage().toLowerCase().contains("foreign key"));
@@ -235,17 +230,127 @@ public class CRUDUsuarios {
         try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, id);
             int n = ps.executeUpdate();
-            if (n > 0) {
-                JOptionPane.showMessageDialog(panelMain, "Usuario desactivado.");
-                cargarUsuarios();
-            } else {
-                JOptionPane.showMessageDialog(panelMain, "No se pudo desactivar el usuario.");
-            }
+            JOptionPane.showMessageDialog(panelMain, n > 0 ? "Usuario desactivado." : "No se pudo desactivar el usuario.");
+            cargarUsuarios();
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(panelMain, "Error al desactivar: " + ex.getMessage());
         }
     }
 
+    // ===================== Estilo (como CRUDServicios) =====================
+    private void compactLookAndFeel() {
+        // Márgenes del contenedor principal
+        if (panelMain != null) panelMain.setBorder(new EmptyBorder(8, 10, 10, 10));
+
+        // Botones grandes + colores
+        makeBig(btnAgregarUsuario);
+        makeBig(btnModificarUsuario);
+        makeBig(btnEliminarUsuario);
+        makeBig(btnCancelar);
+
+        stylePrimaryButton(btnAgregarUsuario);
+        stylePrimaryButton(btnModificarUsuario);
+        styleDangerButton(btnEliminarUsuario);
+        styleDangerButton(btnCancelar);
+
+        // Oculta título/ícono heredado del .form si lo hay (para que se parezca a Servicios)
+        hideHeaderIconOrTitle(panelMain);
+
+        // Renderer zebra ya aplicado en configurarTabla()
+    }
+
+    private void makeBig(JButton b) {
+        if (b == null) return;
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        Dimension big = new Dimension(140, 40);
+        b.setPreferredSize(big);
+        b.setMinimumSize(big);
+        b.setFocusPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new ModernButtonUI(new Color(0x22C55E), new Color(0x16A34A), new Color(0x15803D),
+                Color.WHITE, 12, true));
+    }
+    private void styleDangerButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new ModernButtonUI(new Color(0xEF4444), new Color(0xDC2626), new Color(0xB91C1C),
+                Color.WHITE, 12, true));
+    }
+
+    private void hideHeaderIconOrTitle(Container root) {
+        if (root == null) return;
+        for (Component c : root.getComponents()) {
+            if (c instanceof JLabel lbl) {
+                String t = (lbl.getText() != null) ? lbl.getText().trim().toLowerCase() : "";
+                boolean looksTitle = t.contains("usuario"); // "Usuarios", "Usuarios Registrados", etc.
+                boolean hasIcon = lbl.getIcon() != null;
+                if (looksTitle || hasIcon) lbl.setVisible(false);
+            }
+            if (c instanceof Container child) hideHeaderIconOrTitle(child);
+        }
+    }
+
+    // ====== Render para “zebra” y alineaciones ======
+    static class ZebraRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        private final Color even = Color.WHITE;
+        private final Color odd  = new Color(236, 253, 245); // verde pastel muy ligero
+
+        ZebraRenderer(JTable table) {}
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, column);
+
+            if (!isSelected) setBackground((row % 2 == 0) ? even : odd);
+
+            // Alineaciones: Usuario/Nombre/Rol -> izquierda, Activo -> centro
+            if (column == 4) setHorizontalAlignment(CENTER);
+            else setHorizontalAlignment(LEFT);
+
+            return this;
+        }
+    }
+
+    // ====== Botón moderno ======
+    static class ModernButtonUI extends BasicButtonUI {
+        private final Color bg, hover, press, fg;
+        private final int arc;
+        private final boolean filled;
+
+        ModernButtonUI(Color bg, Color hover, Color press, Color fg, int arc, boolean filled) {
+            this.bg = bg; this.hover = hover; this.press = press; this.fg = fg; this.arc = arc; this.filled = filled;
+        }
+
+        @Override public void installUI(JComponent c) {
+            super.installUI(c);
+            AbstractButton b = (AbstractButton) c;
+            b.setOpaque(false);
+            b.setBorder(new EmptyBorder(10, 24, 10, 24));
+            b.setRolloverEnabled(true);
+            b.setFocusPainted(false);
+            b.setForeground(fg);
+        }
+
+        @Override public void paint(Graphics g, JComponent c) {
+            AbstractButton b = (AbstractButton) c;
+            ButtonModel m = b.getModel();
+            Color fill = m.isPressed() ? press : (m.isRollover() ? hover : bg);
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), arc, arc);
+            g2.dispose();
+
+            super.paint(g, c);
+        }
+    }
+
+    // ===================== Helpers =====================
     private Container root() {
         if (panelMain != null) return panelMain;
         if (panelTabla != null && panelTabla.getParent() != null) return panelTabla.getParent();
