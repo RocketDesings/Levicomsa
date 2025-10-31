@@ -26,7 +26,6 @@ public class Login {
     private JPanel panelTxt;
     private JPanel panelBotones;
 
-
     // ===== Paleta alineada con PantallaAdmin/Asesor =====
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
     private static final Color GREEN_BASE   = new Color(0x16A34A);
@@ -40,6 +39,7 @@ public class Login {
     private static final Color BORDER_FOCUS = new Color(0x059669);
 
     public Login() {
+
         // ---------- FRAME ----------
         JFrame loginFrame = new JFrame("Login");
         loginFrame.setUndecorated(true);
@@ -65,7 +65,6 @@ public class Login {
         loginFrame.pack();
         loginFrame.setLocationRelativeTo(null);
         loginFrame.setVisible(true);
-
         // ---------- LOGO ----------
         UiImages.setIcon(lblLogo, "/images/levicomsa.png", 140);
 
@@ -215,7 +214,7 @@ public class Login {
         if (c == null) return;
         c.setOpaque(true);
         c.setBackground(CARD_BG);
-        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(1,1,1,1)));
     }
 
     // Botón redondeado moderno (pinta fondo y mantiene el render del texto)
