@@ -1,11 +1,11 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
+import javax.swing.table.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.lang.ref.WeakReference;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -57,6 +57,7 @@ public class RealizarCobro {
     private JButton btnAnadirObjetoExtra;
     private JLabel lblTituloTabla;
     private JButton btnEliminarObjeto;
+    private JLabel lblTituloTabla2;
 
     // === Estado ===
     private final int sucursalId;
@@ -75,6 +76,24 @@ public class RealizarCobro {
     // evita 2 ventanas abiertas
     private static WeakReference<JDialog> OPEN = new WeakReference<>(null);
     private JDialog dialog;
+
+    // ====== Paleta y estilos (alineados a PantallaAdmin / InterfazCajero) ======
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color BG_CANVAS    = new Color(0xF3F4F6);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color TABLE_SEL_TX = TEXT_PRIMARY;
+
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+    private final Font fH1     = new Font("Segoe UI Black", Font.BOLD, 28);
 
     // ===== Public API =====
     public static void mostrar(Window owner, int sucursalId, int usuarioId) {
@@ -99,7 +118,7 @@ public class RealizarCobro {
         form.dialog = d;
         OPEN = new WeakReference<>(d);
 
-        form.init();                // ← se abre sin exigir selección previa
+        form.init();                // estilos + datos + eventos
         d.setVisible(true);
     }
 
@@ -112,7 +131,9 @@ public class RealizarCobro {
 
     // ====== Inicialización UI / datos ======
     private void init() {
+        try { setUIFont(new Font("Segoe UI", Font.BOLD, 13)); } catch (Exception ignored) {}
         construirModelos();
+        aplicarTheme();            // <<< DISEÑO / ESTILO
         cablearEventos();
         cargarCobrosPendientes();
         cargarServiciosCategoria3();
@@ -135,7 +156,7 @@ public class RealizarCobro {
         tblTablaCobros.setModel(modelCobros);
         sorterCobros = new TableRowSorter<>(modelCobros);
         tblTablaCobros.setRowSorter(sorterCobros);
-        tblTablaCobros.setRowHeight(26);
+        tblTablaCobros.setRowHeight(28);
         tblTablaCobros.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         if (lblTituloTabla != null) lblTituloTabla.setText("Cobros pendientes");
 
@@ -153,7 +174,7 @@ public class RealizarCobro {
             }
         };
         tblObjetosTotal.setModel(modelItems);
-        tblObjetosTotal.setRowHeight(24);
+        tblObjetosTotal.setRowHeight(26);
 
         // ocultar servicio_id y cobro_id
         ocultarColumna(tblObjetosTotal, 4);
@@ -199,10 +220,7 @@ public class RealizarCobro {
             }
         });
 
-        // agregar extra (puede no haber cobros; si no hay, se marcan como cobro_id=0 y luego se migran/guardan)
-        if (btnAnadirObjetoExtra != null) {
-            btnAnadirObjetoExtra.addActionListener(e -> agregarExtra());
-        }
+        if (btnAnadirObjetoExtra != null) btnAnadirObjetoExtra.addActionListener(e -> agregarExtra());
 
         // cambio en recibido
         if (txtCobro != null) {
@@ -210,6 +228,23 @@ public class RealizarCobro {
                 public void insertUpdate(DocumentEvent e) { actualizarTotalYCambio(); }
                 public void removeUpdate(DocumentEvent e) { actualizarTotalYCambio(); }
                 public void changedUpdate(DocumentEvent e) { actualizarTotalYCambio(); }
+            });
+            // Solo números, punto o coma
+            txtCobro.addKeyListener(new KeyAdapter() {
+                @Override public void keyTyped(KeyEvent e) {
+                    char c = e.getKeyChar();
+                    if (!Character.isDigit(c) && c != '.' && c != ',' && c != '\b') e.consume();
+                }
+            });
+        }
+
+        // Cantidad solo números
+        if (txtCantidad != null) {
+            txtCantidad.addKeyListener(new KeyAdapter() {
+                @Override public void keyTyped(KeyEvent e) {
+                    char c = e.getKeyChar();
+                    if (!Character.isDigit(c) && c != '\b') e.consume();
+                }
             });
         }
 
@@ -219,17 +254,28 @@ public class RealizarCobro {
         // cancelar
         if (btnCancelarButton != null) btnCancelarButton.addActionListener(e -> dialog.dispose());
 
-        cmbMetodoPago.addActionListener(e -> {
-            MetodoPagoItem mp = (MetodoPagoItem) cmbMetodoPago.getSelectedItem();
-            if (mp != null && mp.nombre.equalsIgnoreCase("Transferencia")) {
-                txtCobro.setText("");
-                txtCobro.setEditable(false);
-            } else {
-                txtCobro.setEditable(true);
-            }
-        });
+        if (cmbMetodoPago != null) {
+            cmbMetodoPago.addActionListener(e -> {
+                MetodoPagoItem mp = (MetodoPagoItem) cmbMetodoPago.getSelectedItem();
+                if (mp != null && mp.nombre.equalsIgnoreCase("Transferencia")) {
+                    if (txtCobro != null) { txtCobro.setText(""); txtCobro.setEditable(false); }
+                } else {
+                    if (txtCobro != null) txtCobro.setEditable(true);
+                }
+            });
+        }
+
         if (btnEliminarObjeto != null) {
             btnEliminarObjeto.addActionListener(e -> eliminarItemSeleccionado());
+        }
+
+        // Acceso rápido: ESC cierra el diálogo
+        if (panelMain != null) {
+            panelMain.registerKeyboardAction(
+                    e -> dialog.dispose(),
+                    KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                    JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
+            );
         }
     }
 
@@ -367,8 +413,8 @@ public class RealizarCobro {
             JOptionPane.showMessageDialog(dialog, "No se pudieron cargar métodos de pago:\n" + ex.getMessage());
         }
         cmbMetodoPago.setModel(model);
-        if (lblMetodoPago != null) lblMetodoPago.setText("Método de pago:");
-        if (lblRecibido  != null)  lblRecibido.setText("Recibido:");
+        if (lblMetodoPago != null) { lblMetodoPago.setText("Método de pago:"); lblMetodoPago.setFont(fText); }
+        if (lblRecibido  != null)  { lblRecibido.setText("Recibido:"); lblRecibido.setFont(fText); }
     }
 
     // ====== Acciones UI ======
@@ -665,9 +711,8 @@ public class RealizarCobro {
             }
         }
         if (migrado) {
-            // Recalcula totales por cobro en memoria si los usas en la UI
             totalPorCobro.put(primerCobro, calcularTotalDelCobroEnTicket(primerCobro));
-            totalPorCobro.remove(0); // limpia el acumulado del “cobro virtual”
+            totalPorCobro.remove(0);
             actualizarTotalYCambio();
         }
     }
@@ -729,5 +774,216 @@ public class RealizarCobro {
         }
 
         return cobroId;
+    }
+
+    // ==================== ESTILO / THEME ====================
+    private void aplicarTheme() {
+        // Fondo general y jerarquía
+        if (panelMain != null) panelMain.setBackground(BG_CANVAS);
+
+        // “Cards” (bordes redondeados + sombra suave) en secciones relevantes
+        decorateAsCard(panelTabla);
+        decorateAsCard(panelObjetos);
+        decorateAsCard(panelAgregarServicios);
+        decorateAsCard(panelInfoPago);
+        decorateAsCard(panelInfoPago2);
+        decorateAsCard(panelAñadir);
+        decorateAsCard(panelRapidos);
+        decorateAsCard(panelTotal);
+        decorateAsCard(panelBotones);
+        decorateAsCard(panelExtra);
+        decorateAsCard(panelLabel);
+
+        // Scrollbars modernos
+        if (scrTabla != null) {
+            scrTabla.getVerticalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTabla.getHorizontalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTabla.setBorder(new MatteBorder(1,1,1,1,BORDER_SOFT));
+            scrTabla.getViewport().setBackground(CARD_BG);
+        }
+        if (scrObjetos != null) {
+            scrObjetos.getVerticalScrollBar().setUI(new SmoothScrollBarUI());
+            scrObjetos.getHorizontalScrollBar().setUI(new SmoothScrollBarUI());
+            scrObjetos.setBorder(new MatteBorder(1,1,1,1,BORDER_SOFT));
+            scrObjetos.getViewport().setBackground(CARD_BG);
+        }
+
+        // Tablas: header verde, zebra, selección accesible
+        if (tblTablaCobros != null) {
+            JTableHeader h = tblTablaCobros.getTableHeader();
+            h.setDefaultRenderer(new HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
+            h.setPreferredSize(new Dimension(h.getPreferredSize().width, 38));
+            tblTablaCobros.setDefaultRenderer(Object.class, new ZebraRenderer());
+            tblTablaCobros.setShowGrid(false);
+            tblTablaCobros.setIntercellSpacing(new Dimension(0,0));
+            tblTablaCobros.setSelectionBackground(TABLE_SEL_BG);
+            tblTablaCobros.setSelectionForeground(TABLE_SEL_TX);
+        }
+        if (tblObjetosTotal != null) {
+            JTableHeader h2 = tblObjetosTotal.getTableHeader();
+            h2.setDefaultRenderer(new HeaderRenderer(h2.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
+            h2.setPreferredSize(new Dimension(h2.getPreferredSize().width, 36));
+            tblObjetosTotal.setDefaultRenderer(Object.class, new ZebraRenderer());
+            tblObjetosTotal.setShowGrid(false);
+            tblObjetosTotal.setIntercellSpacing(new Dimension(0,0));
+            tblObjetosTotal.setSelectionBackground(TABLE_SEL_BG);
+            tblObjetosTotal.setSelectionForeground(TABLE_SEL_TX);
+        }
+
+        // Títulos y tipografías clave
+        if (lblTituloTabla != null)  { lblTituloTabla.setFont(fTitle);  lblTituloTabla.setForeground(TEXT_PRIMARY); }
+        if (lblTituloTabla2 != null)  { lblTituloTabla2.setFont(fTitle);  lblTituloTabla2.setForeground(TEXT_PRIMARY); }
+        if (lblTituloTotal != null)  { lblTituloTotal.setFont(fTitle);  lblTituloTotal.setForeground(TEXT_PRIMARY); }
+        if (lblTotal != null)        { lblTotal.setFont(fH1);           lblTotal.setForeground(GREEN_DARK); }
+
+        // Inputs
+        styleTextField(txtCantidad);
+        styleTextField(txtCobro);
+        styleTextField(txtCambio);
+
+        // Botones
+        stylePrimaryButton(btnCobrar);
+        styleExitButton(btnCancelarButton);
+        stylePrimaryButton(btnAnadirObjetoExtra);
+        styleGhostButton(btnEliminarObjeto);
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setFont(fText);
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,20,10,24));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void styleGhostButton(JButton b) {
+        if (b == null) return;
+        b.setFont(fText);
+        b.setUI(new PantallaAdmin.ModernButtonUI(new Color(0,0,0,18), new Color(0,0,0,35), new Color(0,0,0,60), TEXT_PRIMARY, 12, false));
+        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        Color ROJO_BASE = new Color(0xDC2626);
+        Color GRIS_HOV  = new Color(0xD1D5DB);
+        Color GRIS_PRE  = new Color(0x9CA3AF);
+        b.setFont(fText);
+        b.setUI(new PantallaAdmin.ModernButtonUI(ROJO_BASE, GRIS_HOV, GRIS_PRE, Color.BLACK, 12, true));
+        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void styleTextField(JTextField tf) {
+        if (tf == null) return;
+        tf.setFont(fText);
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new RoundBorder(BORDER_SOFT, 12, 1, new Insets(8, 12, 8, 12)));
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new RoundBorder(BORDER_FOCUS, 12, 2, new Insets(8,12,8,12)));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new RoundBorder(BORDER_SOFT, 12, 1, new Insets(8,12,8,12)));
+            }
+        });
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    private void setUIFont(Font f) {
+        var keys = UIManager.getDefaults().keys();
+        while (keys.hasMoreElements()) {
+            Object k = keys.nextElement();
+            Object v = UIManager.get(k);
+            if (v instanceof Font) UIManager.put(k, f);
+        }
+    }
+
+    // ===== Renderers / Bordes / Scrollbar =====
+    private static class HeaderRenderer extends DefaultTableCellRenderer {
+        private final TableCellRenderer base;
+        private final Color bg, fg;
+        HeaderRenderer(TableCellRenderer base, Color bg, Color fg) { this.base=base; this.bg=bg; this.fg=fg; }
+        @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+            Component comp = base.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            comp.setBackground(bg);
+            comp.setForeground(fg);
+            comp.setFont(comp.getFont().deriveFont(Font.BOLD));
+            if (comp instanceof JComponent jc) jc.setBorder(new MatteBorder(0,0,1,0, GREEN_BASE.darker()));
+            return comp;
+        }
+    }
+
+    private class ZebraRenderer extends DefaultTableCellRenderer {
+        @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+            Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            if (sel) {
+                comp.setBackground(TABLE_SEL_BG);
+                comp.setForeground(TABLE_SEL_TX);
+            } else {
+                comp.setBackground((r % 2 == 0) ? Color.WHITE : TABLE_ALT);
+                comp.setForeground(TEXT_PRIMARY);
+            }
+            setBorder(new EmptyBorder(6,8,6,8));
+            return comp;
+        }
+    }
+
+    private static class RoundBorder extends MatteBorder {
+        private final int arc;
+        private final Insets pad;
+        private final Color color;
+        public RoundBorder(Color color, int arc, int thickness, Insets padding) {
+            super(thickness, thickness, thickness, thickness, color);
+            this.arc = arc; this.pad = padding; this.color = color;
+        }
+        @Override public Insets getBorderInsets(Component c) {
+            return new Insets(pad.top + top, pad.left + left, pad.bottom + bottom, pad.right + right);
+        }
+        @Override public boolean isBorderOpaque() { return false; }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = width  - 1, h = height - 1;
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, w, h, arc, arc);
+            g2.dispose();
+        }
+    }
+
+    private static class SmoothScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI {
+        @Override protected void configureScrollBarColors() {
+            this.thumbColor = new Color(0xCBD5E1);
+            this.trackColor = new Color(0xF1F5F9);
+        }
+        @Override protected Dimension getMinimumThumbSize() { return new Dimension(8, 40); }
+        @Override protected JButton createDecreaseButton(int orientation) { return botonVacio(); }
+        @Override protected JButton createIncreaseButton(int orientation) { return botonVacio(); }
+        private JButton botonVacio() {
+            JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setOpaque(false); b.setBorder(null); return b;
+        }
+        @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) {
+            Graphics2D g2=(Graphics2D)g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(r.x+2, r.y+2, r.width-4, r.height-4, 8, 8);
+            g2.dispose();
+        }
+        @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) {
+            Graphics2D g2=(Graphics2D)g.create();
+            g2.setColor(trackColor);
+            g2.fillRoundRect(r.x, r.y, r.width, r.height, 8, 8);
+            g2.dispose();
+        }
     }
 }

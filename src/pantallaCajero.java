@@ -1,4 +1,8 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
@@ -12,12 +16,27 @@ public class pantallaCajero {
     private JTextField txtMontoInicial;
     private JButton tbnIngresar;
     private JButton tbnCerrarSesion;
-    private JLabel lblLogo;
     private JLabel lblTitulo;
     // Asegúrate de añadir este JLabel en el diseñador con este nombre:
     private JLabel lblNombre;
+    private JPanel panelTitulo;
+    private JPanel panelBienvenida;
+    private JPanel panelMonto;
+    private JPanel panelBotones;
+    private JLabel lblBienvenida;
+    private JLabel lblMonto;
+    private JPanel panelExtra;
     private JButton btnCambiarContra;
-
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    Font fText  = new Font("Segoe UI", Font.PLAIN, 16);
+    Font fTitle = new Font("Segoe UI", Font.BOLD, 22);
+    Font fTitle2 = new Font("Segoe UI", Font.BOLD, 24);
     // Contexto
     private int sucursalId;         // puede resolverse desde BD
     private final int usuarioId;
@@ -43,17 +62,16 @@ public class pantallaCajero {
         JFrame frame = new JFrame("Pantalla Cajero");
         frame.setUndecorated(true);
         frame.setContentPane(panelMain);
+        frame.setUndecorated(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        JMenuBar mb = new JMenuBar();
-        JMenu mCuenta = new JMenu("Cuenta");
-        JMenuItem miCambiar = new JMenuItem("Cambiar contraseña…");
-        miCambiar.addActionListener(e -> new CambiarContrasenaDialog(this.usuarioId, false).setVisible(true));
-        mCuenta.add(miCambiar);
-        mb.add(mCuenta);
-        frame.setJMenuBar(mb);
         frame.pack();
         frame.setLocationRelativeTo(null);
-
+        decorateAsCard(panelExtra);
+        decorateAsCard(panelMain);
+        lblTitulo.setFont(fTitle2);
+        lblBienvenida.setFont(fTitle);
+        lblNombre.setFont(fTitle);
+        lblMonto.setFont(fText);
         // UX: Enter envía; restringe a números/coma/punto
         if (txtMontoInicial != null) {
             txtMontoInicial.addActionListener(e -> tbnIngresar.doClick());
@@ -64,13 +82,22 @@ public class pantallaCajero {
                 }
             });
         }
-
+        if (txtMontoInicial != null) styleTextField(txtMontoInicial);
         tbnIngresar.addActionListener(e -> onIngresar(frame));
+        stylePrimaryButton(tbnIngresar);
+        styleExitButton(tbnCerrarSesion);
         tbnCerrarSesion.addActionListener(e -> {
             frame.dispose();
             new Login();
         });
-
+// Tarjeta con sombra y esquinas redondeadas que envuelve tu mainPanel
+        frame.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                frame.setShape(new java.awt.geom.RoundRectangle2D.Double(
+                        0, 0, frame.getWidth(), frame.getHeight(), 14, 14
+                ));
+            }
+        });
         frame.setVisible(true);
     }
 
@@ -140,6 +167,35 @@ public class pantallaCajero {
             try { if (con != null) con.close(); } catch (Exception ignore) {}
         }
     }
+    private void stylePrimaryButton(JButton b) {
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 10, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+    private void styleExitButton(JButton b) {
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+    private void styleTextField(JTextField tf) {
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new Login.CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new Login.CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new Login.CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
+            }
+        });
+    }
 
     // ==== Helpers de datos ====
     private int obtenerSucursalIdDeUsuario(int usuarioId) {
@@ -159,7 +215,12 @@ public class pantallaCajero {
         } catch (Exception ignored) {}
         return -1;
     }
-
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
     private void mostrarNombreUsuario() {
         String nombre = "Cajero";
         final String sql = """

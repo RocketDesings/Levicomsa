@@ -382,7 +382,7 @@ public class Login {
         Sesion s = autenticarUsuario(usuario, password);
         if (s != null) {
 
-            JOptionPane.showMessageDialog(null, "Bienvenido " + usuario + " ✅");
+            JOptionPane.showMessageDialog(null, "Bienvenid@ " + usuario + " que tengas un excelente día.");
             JFrame frameActual = (JFrame) SwingUtilities.getWindowAncestor(mainPanel);
             if (frameActual != null) frameActual.dispose();
 

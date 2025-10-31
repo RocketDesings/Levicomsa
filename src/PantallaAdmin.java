@@ -221,7 +221,7 @@ public class PantallaAdmin implements Refrescable {
 
         // Tipografías y jerarquía visual
         if (lblSlogan != null) {
-            lblSlogan.setText("<html>Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de tus necesidades.</html>");
+            lblSlogan.setText("<html>Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de <br>tus necesidades.</br></html>");
             lblSlogan.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
             lblSlogan.setForeground(TEXT_MUTED);
         }
@@ -711,7 +711,7 @@ public class PantallaAdmin implements Refrescable {
         }
     }
 
-    private static class ModernButtonUI extends BasicButtonUI {
+    static class ModernButtonUI extends BasicButtonUI {
         private final Color base, hover, pressed, text;
         private final int radius;
         private final boolean filled;

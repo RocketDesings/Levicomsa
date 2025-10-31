@@ -4,9 +4,11 @@ import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.RoundRectangle2D;
@@ -55,7 +57,6 @@ public class InterfazCajero implements Refrescable {
     private JButton btnCambiarContra;
     private JButton btnConsultarCliente;
 
-
     // ====== comportamiento ======
     private AutoActualizarTabla autoActualizador;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -72,31 +73,42 @@ public class InterfazCajero implements Refrescable {
     private static final int PAGE_SIZE = 300;
     private int currentOffset = 0;
 
-    // ====== Paleta (del logo) ======
+    // ====== Paleta (igual que PantallaAdmin) ======
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
     private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
     private static final Color BG_CANVAS    = new Color(0xF3F4F6);
-    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
-    private static final Color TEXT_MUTED   = new Color(0x6B7280);
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
     private static final Color BORDER_FOCUS = new Color(0x059669);
     private static final Color TABLE_ALT    = new Color(0xF9FAFB);
     private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
     private static final Color TABLE_SEL_TX = TEXT_PRIMARY;
+    Font fText  = new Font("Segoe UI", Font.PLAIN, 16);
+    Font fTitle = new Font("Segoe UI", Font.BOLD, 22);
+    // hover visual
+    private int hoverRowClientes = -1;
+    private int hoverRowCobros   = -1;
 
     public InterfazCajero(int usuarioId) {
         this.usuarioId = usuarioId;
+
+        // Fuente global consistente
+        try { setUIFont(new Font("Segoe UI", Font.BOLD, 13)); } catch (Exception ignore) {}
+
         // ===== Frame =====
-        pantalla = new JFrame("Pantalla Asesor");
+        pantalla = new JFrame("Pantalla Cajero");
         pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
-        UiImages.setIcon(lblIcono, "/images/levicomsa.png",150);
-        UiImages.setIcon(lblImagen, "/images/usuario.png",100);
+        try {
+            UiImages.setIcon(lblIcono, "/images/levicomsa.png",150);
+            UiImages.setIcon(lblImagen, "/images/usuario.png",100);
+        } catch (Throwable ignore) {}
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        // Fullscreen (maximizada, no exclusiva → no minimiza al abrir diálogos propios)
+        // Fullscreen (maximizada, no exclusiva)
         pantalla.setExtendedState(JFrame.MAXIMIZED_BOTH);
         pantalla.setResizable(true);
         pantalla.addWindowStateListener(e -> {
@@ -106,35 +118,37 @@ public class InterfazCajero implements Refrescable {
             }
         });
         pantalla.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                stopAuto();
-            }
-
-            @Override
-            public void windowClosed(WindowEvent e) {
-                stopAuto();
-            }
+            @Override public void windowClosing(WindowEvent e) { stopAuto(); }
+            @Override public void windowClosed (WindowEvent e) { stopAuto(); }
         });
 
-        // Estilo general
+        // Estilo general (calcado a Admin)
         applyTheme();
         pantalla.pack();
         pantalla.setLocationRelativeTo(null);
         pantalla.setVisible(true);
+        btnConsultarCliente.setFont(fText);
+        btnAgregarCliente.setFont(fText);
+        btnModificarCliente.setFont(fText);
+        btnCambiarContra.setFont(fText);
+        btnEnviarCobro.setFont(fText);
+        btnCambiarContra.setFont(fText);
+        btnCorte.setFont(fText);
+        btnEntrada.setFont(fText);
+        btnSalida.setFont(fText);
+        btnRealizarCobro.setFont(fText);
+        // Acciones (manteniendo funcionalidades)
+        if (btnConsultarCliente != null) btnConsultarCliente.addActionListener(e ->abrirConsultarCliente());
+        if (btnCorte != null) btnCorte.addActionListener(e -> CorteCaja.mostrar(pantalla, sucursalId, usuarioId));
+        if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
 
-        // Acciones
-        btnConsultarCliente.addActionListener(e ->abrirConsultarCliente());
-        btnCorte.addActionListener(e -> CorteCaja.mostrar(pantalla, sucursalId, usuarioId));
-        btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         // Botones de movimientos de caja
-        btnEntrada.addActionListener(e -> abrirRegistrarEntrada());
-        btnSalida.addActionListener(e -> abrirRegistrarSalida());
-        btnRealizarCobro.addActionListener(e ->
-                RealizarCobro.mostrar(pantalla, sucursalId, usuarioId)
-        );
+        if (btnEntrada != null) btnEntrada.addActionListener(e -> abrirRegistrarEntrada());
+        if (btnSalida  != null) btnSalida.addActionListener(e -> abrirRegistrarSalida());
 
-        // Cobrar (habilita según sucursal)
+        if (btnRealizarCobro != null)
+            btnRealizarCobro.addActionListener(e -> RealizarCobro.mostrar(pantalla, sucursalId, usuarioId));
+
         if (btnEnviarCobro != null) {
             btnEnviarCobro.addActionListener(e -> {
                 if (sucursalId <= 0) {
@@ -144,20 +158,15 @@ public class InterfazCajero implements Refrescable {
                 EnviarCobro.mostrar(sucursalId, usuarioId);
             });
         }
-        // === CAMBIAR CONTRASEÑA ===
         if (btnCambiarContra != null) {
             btnCambiarContra.addActionListener(e -> {
                 if (usuarioId <= 0) {
                     JOptionPane.showMessageDialog(pantalla, "No se detectó el usuario actual.");
                     return;
                 }
-                // Abre el diálogo reutilizable que ya tienes en el proyecto
-                CambiarContrasenaDialog dlg = new CambiarContrasenaDialog(usuarioId, /*forzado=*/false);
-                dlg.setVisible(true);
-                // no necesitas nada más: el diálogo valida, hashea (Passwords.hash) y actualiza en BD
+                new CambiarContrasenaDialog(usuarioId, false).setVisible(true);
             });
         }
-
 
         iniciarReloj();
         configurarTabla();
@@ -165,67 +174,93 @@ public class InterfazCajero implements Refrescable {
         cablearBusquedaInline();
         cargarDatosAsesor();
         cargarClientesDesdeBD();
-
         cargarCobrosPendientes();
 
         // Auto refresh
         autoActualizador = new AutoActualizarTabla(() -> {
-            cargarClientesDesdeBD(); //REcarga la tabla de clientes
-            cargarCobrosPendientes(); // Recarga la tabla de cobros pendientes
-        }, 5000); // cada 5 segundos
-        autoActualizador.iniciar(); // Inicia la autoactualización
+            cargarClientesDesdeBD();
+            cargarCobrosPendientes();
+        }, 5000);
+        autoActualizador.iniciar();
 
-        SwingUtilities.invokeLater(() -> tfBuscar.requestFocusInWindow());
-
+        if (tfBuscar != null) SwingUtilities.invokeLater(() -> tfBuscar.requestFocusInWindow());
     }
 
-    // ========= THEME / ESTILO =========
+    // ========= THEME / ESTILO (como PantallaAdmin) =========
     private void applyTheme() {
-        // Fondo principal y “cards”
-        panelMain.setBackground(BG_CANVAS);
+        if (panelMain != null) panelMain.setBackground(Color.WHITE);
 
-        // Tipografías
-        Font h1 = new Font("Segoe UI", Font.BOLD, 24);
-        Font h2 = new Font("Segoe UI", Font.PLAIN, 14);
-        lblSlogan.setText("<html>Comprometidos con tu tranquilidad,<br>ofreciéndote soluciones a la medida de tus necesidades.</html>");
-        if (lblTitulo   != null) lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 70));
-        if (lblTitulo   != null) lblTitulo.setForeground(TEXT_PRIMARY);
-        if (lblNombre   != null) lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        if (lblSucursal != null) lblSucursal.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        if (lblSlogan   != null) lblSlogan.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        if (lblSlogan   != null) lblSlogan.setForeground(TEXT_MUTED);
-        if (lblNombre   != null) lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        // Cards con sombra y borde redondeado
+        decorateAsCard(panelInfo);
+        decorateAsCard(panelExtra);
+        decorateAsCard(panelBotones);
+        decorateAsCard(panelTabla);
+        decorateAsCard(panelBusqueda);
+
+        // Scrollbars modernos
+        if (scrTablaClientes != null) {
+            scrTablaClientes.getVerticalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTablaClientes.getHorizontalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTablaClientes.setBorder(new MatteBorder(1,1,1,1,BORDER_SOFT));
+            scrTablaClientes.getViewport().setBackground(CARD_BG);
+        }
+        if (scrTablaCobros != null) {
+            scrTablaCobros.getVerticalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTablaCobros.getHorizontalScrollBar().setUI(new SmoothScrollBarUI());
+            scrTablaCobros.setBorder(new MatteBorder(1,1,1,1,BORDER_SOFT));
+            scrTablaCobros.getViewport().setBackground(CARD_BG);
+        }
+
+        // Tipografías y jerarquía visual
+        if (lblSlogan != null) {
+            lblSlogan.setText("<html>Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de tus necesidades.</html>");
+            lblSlogan.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
+            lblSlogan.setForeground(TEXT_MUTED);
+        }
+        if (lblTitulo   != null) { lblTitulo.setFont(new Font("Segoe UI Black", Font.BOLD, 54)); lblTitulo.setForeground(TEXT_PRIMARY); }
+        if (lblNombre   != null) { lblNombre.setFont(new Font("Segoe UI Semibold", Font.BOLD, 24)); lblNombre.setForeground(TEXT_PRIMARY); }
+        if (lblSucursal != null) { lblSucursal.setFont(new Font("Segoe UI Semibold", Font.BOLD, 30)); lblSucursal.setForeground(TEXT_PRIMARY); }
+        if (lblPuesto   != null) { lblPuesto.setFont(new Font("Segoe UI", Font.BOLD, 20)); lblPuesto.setForeground(TEXT_MUTED); }
 
         // Botones
-        stylePrimaryButton(btnAgregarCliente);      // verde sólido
-        styleOutlineButton(btnModificarCliente);    // outline discreto
-        styleOutlineButton(btnRealizarCobro);
-        styleExitButton(btnCorte);                  // rojo base, hover gris, texto negro
+        if (btnAgregarCliente   != null) stylePrimaryButton(btnAgregarCliente);
+        if (btnModificarCliente != null) styleGhostButton(btnModificarCliente);
+        if (btnRealizarCobro    != null) styleGhostButton(btnRealizarCobro);
+        if (btnCorte            != null) styleExitButton(btnCorte);
+        if (btnEntrada          != null) styleGhostButton(btnEntrada);
+        if (btnSalida           != null) styleGhostButton(btnSalida);
+        if (btnEnviarCobro      != null) styleGhostButton(btnEnviarCobro);
+        if (btnCambiarContra    != null) styleGhostButton(btnCambiarContra);
+        if (btnConsultarCliente != null) styleGhostButton(btnConsultarCliente);
 
-        // Search field
-        styleSearchField(tfBuscar);
+        // Search field y botón buscar
+        if (tfBuscar != null) styleSearchField(tfBuscar);
         if (buscarButton != null) {
             buscarButton.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
             buscarButton.setBorder(new EmptyBorder(10,16,10,16));
             buscarButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
-
-        // Bordes laterales como en tu diseño original
-        if (panelInfo  != null) panelInfo.setBorder(new MatteBorder(0,2,2,0, new Color(0xD1D5DB)));
-        if (panelExtra != null) panelExtra.setBorder(new MatteBorder(0,0,2,0, new Color(0xD1D5DB)));
     }
 
     private void decorateAsCard(JComponent c) {
+        if (c == null) return;
         c.setOpaque(true);
         c.setBackground(CARD_BG);
-        c.setBorder(BorderFactory.createCompoundBorder(
-                new MatteBorder(1,1,1,1, BORDER_SOFT),
-                new EmptyBorder(12,12,12,12)
-        ));
+        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    private void setUIFont(Font f) {
+        var keys = UIManager.getDefaults().keys();
+        while (keys.hasMoreElements()) {
+            Object key = keys.nextElement();
+            Object val = UIManager.get(key);
+            if (val instanceof Font) UIManager.put(key, f);
+        }
     }
 
     // ========= RELOJ =========
     private void iniciarReloj() {
+        if (lblHora == null) return;
         SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         Timer timer = new Timer(1000, e -> lblHora.setText(formato.format(new Date())));
         timer.start();
@@ -233,20 +268,24 @@ public class InterfazCajero implements Refrescable {
 
     // ========= BÚSQUEDA =========
     private void cablearBusquedaInline() {
+        if (tfBuscar == null) return;
+
         tfBuscar.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e)  { aplicarFiltro(tfBuscar.getText().trim()); }
             public void removeUpdate(DocumentEvent e)  { aplicarFiltro(tfBuscar.getText().trim()); }
             public void changedUpdate(DocumentEvent e) { aplicarFiltro(tfBuscar.getText().trim()); }
         });
         tfBuscar.addActionListener(e -> aplicarFiltro(tfBuscar.getText().trim()));
+
         tfBuscar.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ESCAPE"), "clear");
         tfBuscar.getActionMap().put("clear", new AbstractAction() {
             @Override public void actionPerformed(java.awt.event.ActionEvent e) {
                 tfBuscar.setText(""); aplicarFiltro("");
             }
         });
+
         if (buscarButton != null)
-            tfBuscar.addActionListener(e -> aplicarFiltro(tfBuscar.getText().trim()));
+            buscarButton.addActionListener(e -> aplicarFiltro(tfBuscar.getText().trim()));
     }
 
     private void setPlaceholder(JTextField tf, String texto){
@@ -271,7 +310,7 @@ public class InterfazCajero implements Refrescable {
         sorter.setRowFilter(RowFilter.orFilter(cols));
     }
 
-    // ========= TABLA =========
+    // ========= TABLA CLIENTES =========
     private void configurarTabla() {
         String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
@@ -280,26 +319,32 @@ public class InterfazCajero implements Refrescable {
         tblAsesor.setModel(modelo);
         sorter = new TableRowSorter<>(modelo);
         tblAsesor.setRowSorter(sorter);
-        tblAsesor.setRowHeight(28);
+        tblAsesor.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        tblAsesor.setRowHeight(30);
         tblAsesor.setShowGrid(false);
         tblAsesor.setIntercellSpacing(new Dimension(0, 0));
 
-        // Header
         JTableHeader header = tblAsesor.getTableHeader();
         header.setDefaultRenderer(new HeaderRenderer(header.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
-        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 36));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
 
-        // Zebra + selección accesible
-        tblAsesor.setDefaultRenderer(Object.class, new ZebraRenderer());
+        tblAsesor.setDefaultRenderer(Object.class, new ZebraRendererClientes());
+        tblAsesor.addMouseMotionListener(new MouseAdapter() {
+            @Override public void mouseMoved(MouseEvent e) {
+                int r = tblAsesor.rowAtPoint(e.getPoint());
+                if (r != hoverRowClientes) { hoverRowClientes = r; tblAsesor.repaint(); }
+            }
+        });
+        tblAsesor.addMouseListener(new MouseAdapter() {
+            @Override public void mouseExited(MouseEvent e) { hoverRowClientes = -1; tblAsesor.repaint(); }
+        });
 
-        int[] widths = {220, 140, 160, 110, 160, 140, 260}; // NSS ~140
+        int[] widths = {220, 140, 160, 110, 160, 140, 260};
         for (int i = 0; i < Math.min(widths.length, tblAsesor.getColumnCount()); i++) {
             tblAsesor.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
-        tblAsesor.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
     }
 
-    // ========= DATOS DEL CAJERO =========
     // ========= DATOS DEL CAJERO =========
     private void cargarDatosAsesor() {
         if (usuarioId <= 0) {
@@ -352,8 +397,6 @@ public class InterfazCajero implements Refrescable {
         if (lblPuesto   != null) lblPuesto.setText(puesto            != null ? puesto            : "");
     }
 
-
-
     // ========= CARGA DE CLIENTES =========
     public void cargarClientesDesdeBD() {
         final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo " +
@@ -383,7 +426,7 @@ public class InterfazCajero implements Refrescable {
                     String curp       = rs.getString(3);
                     String pensionado = rs.getBoolean(4) ? "Sí" : "No";
                     String rfc        = rs.getString(5);
-                    String nss        = rs.getString(6);   // <— NSS
+                    String nss        = rs.getString(6);
                     String correo     = rs.getString(7);
                     modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
                 }
@@ -393,9 +436,9 @@ public class InterfazCajero implements Refrescable {
             e.printStackTrace();
         }
     }
+
     // ========= TABLA DE COBROS (solo pendientes) =========
     private void configurarTablaCobros() {
-        // Columnas típicas para pendientes
         String[] cols = {"ID", "Fecha", "Cliente", "Total", "Notas", "Registró"};
         DefaultTableModel m = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -409,23 +452,29 @@ public class InterfazCajero implements Refrescable {
         tblCobros.setIntercellSpacing(new Dimension(0,0));
         tblCobros.getTableHeader().setReorderingAllowed(false);
 
-        // Estilo de header como el de clientes
         JTableHeader h = tblCobros.getTableHeader();
         h.setDefaultRenderer(new HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
         h.setPreferredSize(new Dimension(h.getPreferredSize().width, 36));
 
-        // Anchos sugeridos
         int[] widths = {80, 150, 240, 120, 260, 180};
         for (int i = 0; i < Math.min(widths.length, tblCobros.getColumnCount()); i++) {
             tblCobros.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
 
-        // Zebra
-        tblCobros.setDefaultRenderer(Object.class, new ZebraRenderer());
+        tblCobros.setDefaultRenderer(Object.class, new ZebraRendererCobros());
+        tblCobros.addMouseMotionListener(new MouseAdapter() {
+            @Override public void mouseMoved(MouseEvent e) {
+                int r = tblCobros.rowAtPoint(e.getPoint());
+                if (r != hoverRowCobros) { hoverRowCobros = r; tblCobros.repaint(); }
+            }
+        });
+        tblCobros.addMouseListener(new MouseAdapter() {
+            @Override public void mouseExited(MouseEvent e) { hoverRowCobros = -1; tblCobros.repaint(); }
+        });
     }
-    //CARGA LOS COBROS PENDIENTES
+
+    // CARGA LOS COBROS PENDIENTES
     private void cargarCobrosPendientes() {
-        // Muestra solo estado='pendiente'; si tenemos sucursalId válido, filtramos por sucursal
         final String base = """
             SELECT c.id,
                    c.fecha,
@@ -445,7 +494,6 @@ public class InterfazCajero implements Refrescable {
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            // (opcional) setear @app_user_id por si vas a operar en esta misma conexión
             if (usuarioId > 0) {
                 try (PreparedStatement set = con.prepareStatement("SET @app_user_id = ?")) {
                     set.setInt(1, usuarioId);
@@ -478,19 +526,19 @@ public class InterfazCajero implements Refrescable {
             e.printStackTrace();
         }
     }
+
     public void mostrar() {
         pantalla.setVisible(true);
         cargarClientesDesdeBD();
     }
+
     private void abrirRealizarCobro() {
-        // Validar selección
         int viewRow = tblCobros.getSelectedRow();
         if (viewRow < 0) {
             JOptionPane.showMessageDialog(pantalla, "Selecciona un cobro pendiente en la tabla.");
             return;
         }
 
-        // ID del cobro (columna 0 en tu modelo)
         int modelRow = tblCobros.convertRowIndexToModel(viewRow);
         Object idObj = tblCobros.getModel().getValueAt(modelRow, 0);
         long cobroId;
@@ -501,13 +549,11 @@ public class InterfazCajero implements Refrescable {
             return;
         }
 
-        // Validar contexto
         if (sucursalId <= 0 || usuarioId <= 0) {
             JOptionPane.showMessageDialog(pantalla, "No se pudo determinar sucursal/usuario.");
             return;
         }
 
-        // Abrir y, al cerrar, refrescar la tabla de pendientes
         RealizarCobro.mostrar(pantalla, sucursalId, usuarioId);
         cargarCobrosPendientes();
     }
@@ -515,7 +561,7 @@ public class InterfazCajero implements Refrescable {
     @Override
     public void refrescarDatos() {
         cargarClientesDesdeBD();
-        cargarCobrosPendientes();  // ← recarga también los cobros
+        cargarCobrosPendientes();
         pantalla.setVisible(true);
     }
 
@@ -540,6 +586,7 @@ public class InterfazCajero implements Refrescable {
             JOptionPane.showMessageDialog(pantalla, "No se pudo abrir el formulario: " + ex.getMessage());
         }
     }
+
     // Abre la ventana de historial para el cliente seleccionado en la tabla
     private void abrirConsultarCliente() {
         int viewRow = tblAsesor.getSelectedRow();
@@ -608,15 +655,15 @@ public class InterfazCajero implements Refrescable {
         return -1;
     }
 
-    // ========= estilos reutilizables =========
+    // ========= estilos reutilizables (idénticos a Admin) =========
     private void stylePrimaryButton(JButton b) {
-        b.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
-        b.setBorder(new EmptyBorder(10,18,10,18));
+        b.setUI(new ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
-    private void styleOutlineButton(JButton b) {
-        b.setUI(new ModernButtonUI(new Color(0,0,0,0), new Color(0,0,0,25), new Color(0,0,0,45), TEXT_PRIMARY, 12, false));
-        b.setBorder(new EmptyBorder(10,18,10,18));
+    private void styleGhostButton(JButton b) {
+        b.setUI(new ModernButtonUI(new Color(0,0,0,20), new Color(0,0,0,35), new Color(0,0,0,60), TEXT_PRIMARY, 15, false));
+        b.setBorder(new EmptyBorder(10,28,10,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
     private void styleExitButton(JButton b) {
@@ -641,7 +688,6 @@ public class InterfazCajero implements Refrescable {
         });
     }
 
-    // ========= renderers / bordes / botones modernos =========
     private static class HeaderRenderer extends DefaultTableCellRenderer {
         private final TableCellRenderer base;
         private final Color bg, fg;
@@ -655,12 +701,34 @@ public class InterfazCajero implements Refrescable {
             return comp;
         }
     }
-    private class ZebraRenderer extends DefaultTableCellRenderer {
+
+    private class ZebraRendererClientes extends DefaultTableCellRenderer {
         @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
             Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
             if (sel) {
                 comp.setBackground(TABLE_SEL_BG);
                 comp.setForeground(TABLE_SEL_TX);
+            } else if (r == hoverRowClientes) {
+                comp.setBackground(new Color(0xEEF9F2));
+                comp.setForeground(TEXT_PRIMARY);
+            } else {
+                comp.setBackground((r % 2 == 0) ? Color.WHITE : TABLE_ALT);
+                comp.setForeground(TEXT_PRIMARY);
+            }
+            setBorder(new EmptyBorder(6,8,6,8));
+            return comp;
+        }
+    }
+
+    private class ZebraRendererCobros extends DefaultTableCellRenderer {
+        @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+            Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            if (sel) {
+                comp.setBackground(TABLE_SEL_BG);
+                comp.setForeground(TABLE_SEL_TX);
+            } else if (r == hoverRowCobros) {
+                comp.setBackground(new Color(0xEEF9F2));
+                comp.setForeground(TEXT_PRIMARY);
             } else {
                 comp.setBackground((r % 2 == 0) ? Color.WHITE : TABLE_ALT);
                 comp.setForeground(TEXT_PRIMARY);
@@ -676,9 +744,7 @@ public class InterfazCajero implements Refrescable {
         private final Color color;
         public RoundBorder(Color color, int arc, int thickness, Insets padding) {
             super(thickness, thickness, thickness, thickness, color);
-            this.arc = arc;
-            this.pad = padding;
-            this.color = color;
+            this.arc = arc; this.pad = padding; this.color = color;
         }
         @Override public Insets getBorderInsets(Component c) {
             return new Insets(pad.top + top, pad.left + left, pad.bottom + bottom, pad.right + right);
@@ -687,10 +753,34 @@ public class InterfazCajero implements Refrescable {
         @Override public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int w = width  - 1;
-            int h = height - 1;
+            int w = width  - 1, h = height - 1;
             g2.setColor(color);
             g2.drawRoundRect(x, y, w, h, arc, arc);
+            g2.dispose();
+        }
+    }
+
+    // Borde con sombra + esquinas redondeadas (cards)
+    static class CompoundRoundShadowBorder extends EmptyBorder {
+        private final int arc;
+        private final Color border;
+        private final Color shadow;
+        public CompoundRoundShadowBorder(int arc, Color border, Color shadow) {
+            super(12,12,12,12);
+            this.arc = arc; this.border = border; this.shadow = shadow;
+        }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            g2.setColor(shadow);
+            for (int i=0;i<8;i++) {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.08f));
+                g2.fillRoundRect(x+2+i, y+4+i, w-4, h-6, arc, arc);
+            }
+            g2.setComposite(AlphaComposite.SrcOver);
+            g2.setColor(border);
+            g2.drawRoundRect(x+1, y+1, w-3, h-3, arc, arc);
             g2.dispose();
         }
     }
@@ -728,13 +818,12 @@ public class InterfazCajero implements Refrescable {
                 g2.setColor(new Color(0,0,0,25));
                 g2.draw(rr);
             } else {
-                g2.setColor(new Color(fill.getRed(), fill.getGreen(), fill.getBlue(), 35));
+                g2.setColor(new Color(fill.getRed(), fill.getGreen(), fill.getBlue(), 25));
                 g2.fill(rr);
-                g2.setColor(new Color(b.getForeground().getRed(), b.getForeground().getGreen(), b.getForeground().getBlue(), 160));
+                g2.setColor(new Color(0,0,0,60));
                 g2.draw(rr);
             }
 
-            // texto
             FontMetrics fm = g2.getFontMetrics();
             int tx = (b.getWidth() - fm.stringWidth(b.getText())) / 2;
             int ty = (b.getHeight() + fm.getAscent() - fm.getDescent()) / 2;
@@ -744,6 +833,34 @@ public class InterfazCajero implements Refrescable {
             g2.dispose();
         }
     }
+
+    // Scrollbars finos y redondeados
+    private static class SmoothScrollBarUI extends BasicScrollBarUI {
+        @Override protected void configureScrollBarColors() {
+            this.thumbColor = new Color(0xCBD5E1);
+            this.trackColor = new Color(0xF1F5F9);
+        }
+        @Override protected Dimension getMinimumThumbSize() { return new Dimension(8, 40); }
+        @Override protected JButton createDecreaseButton(int orientation) { return botonVacio(); }
+        @Override protected JButton createIncreaseButton(int orientation) { return botonVacio(); }
+        private JButton botonVacio() {
+            JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setOpaque(false); b.setBorder(null); return b;
+        }
+        @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) {
+            Graphics2D g2=(Graphics2D)g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(thumbColor);
+            g2.fillRoundRect(r.x+2, r.y+2, r.width-4, r.height-4, 8, 8);
+            g2.dispose();
+        }
+        @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) {
+            Graphics2D g2=(Graphics2D)g.create();
+            g2.setColor(trackColor);
+            g2.fillRoundRect(r.x, r.y, r.width, r.height, 8, 8);
+            g2.dispose();
+        }
+    }
+
     private void abrirRegistrarEntrada() {
         if (sucursalId <= 0 || usuarioId <= 0) {
             JOptionPane.showMessageDialog(pantalla, "No se pudo determinar sucursal/usuario.");
@@ -783,11 +900,11 @@ public class InterfazCajero implements Refrescable {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             Shape clip = new RoundRectangle2D.Float(4,4,w-8,h-8, radius, radius);
             g2.setColor(Color.WHITE);
-            g2.fillOval(2,2,w-4,h-4);                   // fondo blanco
+            g2.fillOval(2,2,w-4,h-4); // fondo blanco
             g2.setClip(clip);
             g2.drawImage(image, (w-128)/2, (h-128)/2, 128,128, null);
             g2.setClip(null);
-            g2.setColor(new Color(0,0,0,40));          // borde/sombra
+            g2.setColor(new Color(0,0,0,40)); // borde/sombra
             g2.setStroke(new BasicStroke(2f));
             g2.drawOval(2,2,w-4,h-4);
             g2.dispose();

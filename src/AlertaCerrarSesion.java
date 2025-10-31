@@ -14,27 +14,27 @@ public class AlertaCerrarSesion extends JFrame {
     private JPanel panelBotones;
     private JPanel panelTitulo;
     private JPanel panelMensaje;
+    private JPanel panelExtra;
 
     // Paleta
-    private static final Color BG_CANVAS  = new Color(0xF3F4F6);
+    private static final Color BG_CANVAS  = new Color(0xE1E1E1);
     private static final Color TEXT_PRI   = new Color(0x111827);
     private static final Color TEXT_MUTED = new Color(0x6B7280);
-
     private static final Color GREEN_BASE = new Color(0x16A34A);
     private static final Color GREEN_HOV  = new Color(0x22C55E);
     private static final Color GREEN_PR   = new Color(0x0A6B2A);
-
     private static final Color GRAY_BASE  = new Color(0xE5E7EB);
     private static final Color GRAY_HOV   = new Color(0xD1D5DB);
     private static final Color GRAY_PR    = new Color(0x9CA3AF);
-
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    Font fText  = new Font("Segoe UI", Font.BOLD, 16);
     public AlertaCerrarSesion(JFrame pantallaAsesor) {
         this.pantallaAsesor = pantallaAsesor;
 
         JFrame alerta = new JFrame("Alerta Cerrar Sesión");
         alerta.setUndecorated(true);
         alerta.setContentPane(panelMain);
-
         applyTheme(); // <-- solo estilo
 
         alerta.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -58,7 +58,7 @@ public class AlertaCerrarSesion extends JFrame {
             panelMain.setBorder(new EmptyBorder(16, 16, 16, 16));
         }
         if (panelMensaje != null) {
-            panelMensaje.setBackground(BG_CANVAS);
+            panelMensaje.setBackground(GRAY_HOV);
             panelMensaje.setBorder(new EmptyBorder(16, 16, 16, 16));
         }
         if (panelTitulo != null) {
@@ -74,6 +74,9 @@ public class AlertaCerrarSesion extends JFrame {
         // Botones sin bordes raros ni focus ring del LAF
         stylePrimary(btnConfirmar);    // verde
         styleSecondary(regresarButton);// gris
+        decorateAsCard(panelMain);
+        decorateAsCard(panelExtra);
+        lblTexto.setFont(fText);
     }
 
     private void stylePrimary(JButton b) {
@@ -89,7 +92,7 @@ public class AlertaCerrarSesion extends JFrame {
 
     private void styleSecondary(JButton b) {
         if (b == null) return;
-        b.setUI(new FlatButtonUI(GRAY_BASE, GRAY_HOV, GRAY_PR, TEXT_PRI, 14));
+        b.setUI(new FlatButtonUI(GRAY_PR,GRAY_BASE, GRAY_HOV, TEXT_PRI, 14));
         b.setBorder(new EmptyBorder(10, 18, 10, 18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setFocusPainted(false);
@@ -143,5 +146,11 @@ public class AlertaCerrarSesion extends JFrame {
 
             g2.dispose();
         }
+    }
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(GRAY_BASE);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 }
