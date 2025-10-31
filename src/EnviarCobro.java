@@ -1,10 +1,21 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import java.awt.*;
+import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
 import java.math.BigDecimal;
 import java.sql.*;
+import java.util.Enumeration;
 import java.util.function.BiConsumer;
 
 public class EnviarCobro {
+    // ====== UI del .form ======
     private JPanel panelMain;
     private JPanel panelInfo;
     private JPanel panelCombos;
@@ -21,12 +32,26 @@ public class EnviarCobro {
     private JButton btnSeleccionarCliente;
     private JTextField txtCliente;
 
-    // contexto
+    // ====== contexto ======
     private final int sucursalId;
     private final int usuarioId;
     private Integer clienteIdSel; // se llena al elegir cliente
 
-    // helpers
+    private JFrame frame;
+
+    // ===== Paleta / tema =====
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color TEXT_MUTED   = new Color(0x6B7280);
+    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+
+    // ===== helpers DTO =====
     static class IdNombre {
         final int id; final String nombre;
         IdNombre(int id, String nombre){ this.id=id; this.nombre=nombre; }
@@ -38,32 +63,118 @@ public class EnviarCobro {
         @Override public String toString(){ return nombre; }
     }
 
-    public EnviarCobro(int sucursalId, int usuarioId) {
-        this(sucursalId, null, usuarioId);
-    }
+    // ====== CONSTRUCTORES ======
+    public EnviarCobro(int sucursalId, int usuarioId) { this(sucursalId, null, usuarioId); }
+
     public EnviarCobro(int sucursalId, Integer clienteIdInicial, int usuarioId) {
         this.sucursalId = sucursalId;
         this.usuarioId  = usuarioId;
         this.clienteIdSel = clienteIdInicial;
 
-        JFrame f = new JFrame("Enviar cobro");
-        f.setContentPane(panelMain);
-        f.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-        f.pack();
-        f.setLocationRelativeTo(null);
+        setUIFont(new Font("Segoe UI", Font.PLAIN, 13));
+        construirFrame();        // gradiente + card + estilos
+        cablearEventos();        // atajos y listeners
 
-        // estilos mínimos (sin tocar lógica)
-        if (btnEnviar!=null){ btnEnviar.setBackground(new Color(0x0E7C0E)); btnEnviar.setForeground(Color.WHITE); }
-        if (btnCancelar!=null){ btnCancelar.setBackground(new Color(0xB00020)); btnCancelar.setForeground(Color.WHITE); }
-        if (lblPrecioSugerido!=null){ lblPrecioSugerido.setForeground(new Color(0x0E7C0E)); }
-        if (txtCliente!=null) txtCliente.setEditable(false);
+        if (clienteIdSel != null) cargarNombreCliente(clienteIdSel); // cliente inicial
+        cargarCategorias(); // carga inicial
 
-        // cliente inicial (si vino del caller)
-        if (clienteIdSel != null) {
-            cargarNombreCliente(clienteIdSel);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+
+    // ==================== FRAME + DISEÑO ====================
+    private void construirFrame() {
+        frame = new JFrame("Enviar cobro");
+        frame.setUndecorated(true);
+        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        // Esquinas redondeadas
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent e) {
+                frame.setShape(new RoundRectangle2D.Double(0, 0, frame.getWidth(), frame.getHeight(), 24, 24));
+            }
+        });
+
+        // Fondo gradiente
+        GradientPanel root = new GradientPanel(BG_TOP, BG_BOT);
+        root.setLayout(new GridBagLayout());
+
+        // Card principal
+        CardPanel card = new CardPanel();
+        card.setLayout(new BorderLayout());
+
+        // Asegura panelMain
+        if (panelMain == null) panelMain = new JPanel(new BorderLayout());
+        panelMain.setOpaque(true);
+        panelMain.setBackground(CARD_BG);
+        panelMain.setBorder(new EmptyBorder(16,18,16,18));
+        card.add(panelMain, BorderLayout.CENTER);
+
+        // Decorar secciones si existen
+        decorateAsCard(panelCliente);
+        decorateAsCard(panelCombos);
+        decorateAsCard(panelMonto);
+        decorateAsCard(panelExtra);
+        decorateAsCard(panelInfo);
+        decorateAsCard(panelBotones);
+
+        // Estilos de controles
+        if (txtCliente != null) {
+            styleTextFieldPill(txtCliente);
+            txtCliente.setEditable(false);
+            setPlaceholderIfEmpty(txtCliente, "Selecciona un cliente…");
+        }
+        if (btnSeleccionarCliente != null) styleNeutralButton(btnSeleccionarCliente);
+
+        if (cmbCategoria != null) styleCombo(cmbCategoria);
+        if (cmbServicio  != null) styleCombo(cmbServicio);
+
+        if (txtMonto != null) {
+            styleTextField(txtMonto);
+            setPlaceholderIfEmpty(txtMonto, "Monto (opcional: usa sugerido)");
+            if (txtMonto.getDocument() instanceof AbstractDocument ad) {
+                ad.setDocumentFilter(new NumericFilter()); // sólo números, coma o punto
+            }
         }
 
-        // listeners
+        if (lblPrecioSugerido != null) {
+            lblPrecioSugerido.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
+            lblPrecioSugerido.setForeground(GREEN_DARK);
+        }
+
+        if (btnEnviar != null) {
+            stylePrimaryButton(btnEnviar);
+            frame.getRootPane().setDefaultButton(btnEnviar); // ENTER = enviar
+        }
+        if (btnCancelar != null) styleDangerButton(btnCancelar);
+
+        // Montar root
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = gbc.gridy = 0;
+        gbc.insets = new Insets(24,24,24,24);
+        gbc.fill = GridBagConstraints.BOTH;
+        root.add(card, gbc);
+
+        // “Arrastrable”
+        MouseAdapter dragger = new MouseAdapter() {
+            Point click;
+            @Override public void mousePressed(MouseEvent e) { click = e.getPoint(); }
+            @Override public void mouseDragged(MouseEvent e) {
+                Point p = e.getLocationOnScreen();
+                frame.setLocation(p.x - click.x, p.y - click.y);
+            }
+        };
+        card.addMouseListener(dragger);
+        card.addMouseMotionListener(dragger);
+        panelMain.addMouseListener(dragger);
+        panelMain.addMouseMotionListener(dragger);
+
+        frame.setContentPane(root);
+        frame.pack();
+    }
+
+    // ==================== EVENTOS ====================
+    private void cablearEventos() {
         if (btnSeleccionarCliente != null) {
             btnSeleccionarCliente.addActionListener(e -> abrirSelectorCliente());
         }
@@ -74,24 +185,31 @@ public class EnviarCobro {
             cmbServicio.addActionListener(e -> actualizarPrecioSugerido());
         }
         if (btnCancelar != null) {
-            btnCancelar.addActionListener(e -> f.dispose());
+            btnCancelar.addActionListener(e -> frame.dispose());
         }
         if (btnEnviar != null) {
-            btnEnviar.addActionListener(e -> onEnviar(f));
+            btnEnviar.addActionListener(e -> onEnviar(frame));
         }
 
-        // carga inicial
-        cargarCategorias();
-        f.setVisible(true);
+        // ESC cierra
+        if (panelMain != null) {
+            panelMain.registerKeyboardAction(
+                    e -> frame.dispose(),
+                    KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                    JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
+            );
+        }
     }
 
-    // ======== CLIENTE ========
+    // ==================== CLIENTE ====================
     private void abrirSelectorCliente() {
         BiConsumer<Integer,String> listener = (id, nombre) -> {
             clienteIdSel = id;
             if (txtCliente != null) txtCliente.setText(nombre);
         };
-        new SeleccionarCliente(listener); // no cierra esta ventana; sólo devuelve selección
+        // Usa tu selector existente que acepta BiConsumer:
+        new SeleccionarCliente(listener);
+        // Si prefieres usar otra clase, reemplaza la línea anterior por tu implementación.
     }
 
     private void cargarNombreCliente(int clienteId) {
@@ -104,16 +222,14 @@ public class EnviarCobro {
         } catch (Exception ignored) {}
     }
 
-    // ======== CATEGORÍAS / SERVICIOS ========
+    // ==================== CATEGORÍAS / SERVICIOS ====================
     /** Devuelve true si el usuario puede ver la categoría “Contabilidad”. */
     private boolean puedeVerContabilidad() {
         int rol = -1;
         final String sql = "SELECT rol_id FROM Usuarios WHERE id=?";
         try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, usuarioId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) rol = rs.getInt(1);
-            }
+            try (ResultSet rs = ps.executeQuery()) { if (rs.next()) rol = rs.getInt(1); }
         } catch (SQLException ignored) {}
         return rol == 1 || rol == 4 || rol == 5;
     }
@@ -124,7 +240,6 @@ public class EnviarCobro {
 
         boolean verContab = puedeVerContabilidad();
 
-        // Si NO puede ver contabilidad, la excluimos por nombre (case-insensitive)
         final String sql = """
                 SELECT id, nombre
                 FROM categorias_servicio
@@ -132,9 +247,8 @@ public class EnviarCobro {
                   AND (LOWER(nombre) <> 'contabilidad' OR ?)
                 ORDER BY nombre
                 """;
-        try (Connection con = DB.get();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setBoolean(1, verContab); // si true → no filtra; si false → excluye "contabilidad"
+        try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setBoolean(1, verContab);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) model.addElement(new IdNombre(rs.getInt(1), rs.getString(2)));
             }
@@ -142,6 +256,9 @@ public class EnviarCobro {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(panelMain, "No se pudieron cargar categorías:\n" + ex.getMessage());
         }
+
+        // Ajustar combo después de tener datos
+        styleCombo(cmbCategoria);
 
         if (model.getSize() > 0 && cmbCategoria != null) cmbCategoria.setSelectedIndex(0);
         cargarServiciosPorCategoria();
@@ -153,8 +270,9 @@ public class EnviarCobro {
 
         DefaultComboBoxModel<ServicioItem> model = new DefaultComboBoxModel<>();
         cmbServicio.setModel(model);
+
         if (lblPrecioSugerido != null) lblPrecioSugerido.setText("—");
-        if (cat == null) return;
+        if (cat == null) { styleCombo(cmbServicio); return; }
 
         final String sql = "SELECT id, nombre, precio FROM servicios WHERE activo=1 AND categoria_id=? ORDER BY nombre";
         try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
@@ -172,6 +290,10 @@ public class EnviarCobro {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(panelMain, "No se pudieron cargar servicios:\n" + ex.getMessage());
         }
+
+        // Ajustar combo después de tener datos
+        styleCombo(cmbServicio);
+
         if (model.getSize() > 0) cmbServicio.setSelectedIndex(0);
         actualizarPrecioSugerido();
     }
@@ -186,7 +308,7 @@ public class EnviarCobro {
         }
     }
 
-    // ======== ENVIAR ========
+    // ==================== ENVIAR ====================
     private void onEnviar(JFrame owner) {
         if (clienteIdSel == null || clienteIdSel <= 0) {
             JOptionPane.showMessageDialog(panelMain, "Selecciona un cliente.");
@@ -258,8 +380,251 @@ public class EnviarCobro {
         }
     }
 
-    // helper para abrir rápido
+    // ==================== HELPERS DE ESTILO ====================
+    private void styleTextField(JTextField tf) {
+        if (tf == null) return;
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
+            }
+        });
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+    }
+
+    private void styleTextFieldPill(JTextField tf) {
+        if (tf == null) return;
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 18, 1, new Insets(10, 14, 10, 12)));
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 18, 2, new Insets(10,14,10,12)));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 18, 1, new Insets(10,14,10,12)));
+            }
+        });
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+    }
+
+    // ✅ Versión genérica sin errores de captura
+    private <T> void styleCombo(JComboBox<T> cb) {
+        if (cb == null) return;
+        cb.setBackground(Color.WHITE);
+        cb.setForeground(TEXT_PRIMARY);
+        cb.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
+        cb.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        if (cb.getItemCount() > 0) cb.setPrototypeDisplayValue(cb.getItemAt(0));
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void styleDangerButton(JButton b) {
+        if (b == null) return;
+        Color ROJO = new Color(0xDC2626);
+        b.setUI(new ModernButtonUI(ROJO, ROJO.brighter(), ROJO.darker(), Color.WHITE, 12, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void styleNeutralButton(JButton b) {
+        if (b == null) return;
+        Color BASE = new Color(0x374151); // gris
+        b.setUI(new ModernButtonUI(new Color(0xF3F4F6), new Color(0xE5E7EB), new Color(0xD1D5DB), BASE, 12, true));
+        b.setForeground(BASE);
+        b.setBorder(new EmptyBorder(10,16,10,16));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    private void setPlaceholderIfEmpty(JTextField tf, String ph) {
+        if (tf == null || ph == null) return;
+        if (tf.getText() == null || tf.getText().isBlank()) {
+            tf.setForeground(TEXT_MUTED);
+            tf.setText(ph);
+        }
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                if (tf.getText().equals(ph)) { tf.setText(""); tf.setForeground(TEXT_PRIMARY); }
+            }
+            @Override public void focusLost(FocusEvent e) {
+                if (tf.getText().isBlank()) { tf.setForeground(TEXT_MUTED); tf.setText(ph); }
+            }
+        });
+    }
+
+    // ======== DISEÑO: clases reutilizables ========
+    static class ModernButtonUI extends BasicButtonUI {
+        private final Color bg, hover, press, fg; private final int arc; private final boolean filled;
+        ModernButtonUI(Color bg, Color hover, Color press, Color fg, int arc, boolean filled) {
+            this.bg=bg; this.hover=hover; this.press=press; this.fg=fg; this.arc=arc; this.filled=filled;
+        }
+        @Override public void installUI(JComponent c) {
+            super.installUI(c);
+            AbstractButton b = (AbstractButton) c;
+            b.setOpaque(false);
+            b.setRolloverEnabled(true);
+            b.setFocusPainted(false);
+            b.setForeground(fg);
+        }
+        @Override public void paint(Graphics g, JComponent c) {
+            AbstractButton b = (AbstractButton) c;
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            ButtonModel m = b.getModel();
+            Color fill = m.isPressed() ? press : (m.isRollover() ? hover : bg);
+            if (filled) {
+                g2.setColor(fill);
+                g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), arc, arc);
+            } else {
+                g2.setColor(new Color(255, 255, 255, 100));
+                g2.drawRoundRect(0, 0, c.getWidth() - 1, c.getHeight() - 1, arc, arc);
+            }
+            g2.dispose();
+            super.paint(g, c);
+        }
+    }
+
+    static class GradientPanel extends JPanel {
+        private final Color top, bot;
+        GradientPanel(Color top, Color bot) { this.top = top; this.bot = bot; setOpaque(true); }
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            GradientPaint gp = new GradientPaint(0, 0, top, 0, getHeight(), bot);
+            g2.setPaint(gp);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    static class CardPanel extends JPanel {
+        private final int arc = 20;
+        CardPanel() { setOpaque(false); }
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+            // sombra suave
+            for (int i = 0; i < 10; i++) {
+                float alpha = 0.06f * (10 - i);
+                g2.setColor(new Color(0, 0, 0, (int) (alpha * 255)));
+                g2.fillRoundRect(10 - i, 12 - i, w - (10 - i) * 2, h - (12 - i) * 2, arc + i, arc + i);
+            }
+            // fondo tarjeta
+            g2.setColor(CARD_BG);
+            g2.fillRoundRect(0, 0, w, h, arc, arc);
+            g2.setColor(new Color(0,0,0,30));
+            g2.drawRoundRect(0, 0, w-1, h-1, arc, arc);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    static class CompoundBorderRounded extends javax.swing.border.CompoundBorder {
+        CompoundBorderRounded(Color line, int arc, int thickness, Insets innerPad) {
+            super(new RoundedLineBorder(line, arc, thickness), new EmptyBorder(innerPad));
+        }
+    }
+    static class RoundedLineBorder extends javax.swing.border.AbstractBorder {
+        private final Color color; private final int arc; private final int thickness;
+        RoundedLineBorder(Color color, int arc, int thickness) { this.color = color; this.arc = arc; this.thickness = thickness; }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            for (int i = 0; i < thickness; i++) {
+                g2.drawRoundRect(x + i, y + i, w - 1 - 2 * i, h - 1 - 2 * i, arc, arc);
+            }
+            g2.dispose();
+        }
+        @Override public Insets getBorderInsets(Component c) { return new Insets(thickness, thickness, thickness, thickness); }
+        @Override public Insets getBorderInsets(Component c, Insets insets) {
+            insets.set(thickness, thickness, thickness, thickness); return insets;
+        }
+    }
+
+    static class CompoundRoundShadowBorder extends EmptyBorder {
+        private final int arc; private final Color border; private final Color shadow;
+        public CompoundRoundShadowBorder(int arc, Color border, Color shadow) {
+            super(12,12,12,12);
+            this.arc = arc; this.border = border; this.shadow = shadow;
+        }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(shadow);
+            for (int i=0;i<8;i++) {
+                float alpha = 0.08f;
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+                g2.fillRoundRect(x+2+i, y+4+i, w-4, h-6, arc, arc);
+            }
+            g2.setComposite(AlphaComposite.SrcOver);
+            g2.setColor(border);
+            g2.drawRoundRect(x+1, y+1, w-3, h-3, arc, arc);
+            g2.dispose();
+        }
+    }
+
+    // ====== filtro numérico simple para txtMonto ======
+    static class NumericFilter extends DocumentFilter {
+        @Override public void insertString(FilterBypass fb, int off, String str, AttributeSet a) throws BadLocationException {
+            if (str == null) return;
+            String n = sanitize(fb.getDocument().getText(0, fb.getDocument().getLength()), str);
+            if (n != null) super.insertString(fb, off, str, a);
+        }
+        @Override public void replace(FilterBypass fb, int off, int len, String str, AttributeSet a) throws BadLocationException {
+            String cur = fb.getDocument().getText(0, fb.getDocument().getLength());
+            String next = (str == null) ? cur : cur.substring(0, off) + str + cur.substring(off + len);
+            if (sanitize("", next) != null) super.replace(fb, off, len, str, a);
+        }
+        private String sanitize(String cur, String add) {
+            String s = (cur + add).replace(",", ".").trim();
+            if (s.isEmpty()) return s;
+            if (!s.matches("\\d+(\\.\\d{0,2})?")) return null; // dígitos + opcional 2 decimales
+            return s;
+        }
+    }
+
+    // --- API helpers para abrir la ventana desde otras pantallas ---
     public static void mostrar(int sucursalId, int usuarioId) {
-        new EnviarCobro(sucursalId, usuarioId);
+        SwingUtilities.invokeLater(() -> new EnviarCobro(sucursalId, usuarioId));
+    }
+    public static void mostrar(int sucursalId, Integer clienteId, int usuarioId) {
+        SwingUtilities.invokeLater(() -> new EnviarCobro(sucursalId, clienteId, usuarioId));
+    }
+
+    // ===== Fuente global helper =====
+    private void setUIFont(Font f) {
+        try {
+            Enumeration<Object> keys = UIManager.getDefaults().keys();
+            while (keys.hasMoreElements()) {
+                Object k = keys.nextElement();
+                Object v = UIManager.get(k);
+                if (v instanceof Font) UIManager.put(k, f);
+            }
+        } catch (Exception ignored) {}
     }
 }
