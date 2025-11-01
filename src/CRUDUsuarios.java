@@ -136,7 +136,7 @@ public class CRUDUsuarios {
         tblUsuarios.setDefaultRenderer(Object.class, zebra);
     }
 
-    /** Carga: Usuario, Nombre empleado, Rol (nombre), Activo. */
+    /* Carga: Usuario, Nombre empleado, Rol (nombre), Activo. */
     public final void cargarUsuarios() {
         if (tblUsuarios == null) return;
 
