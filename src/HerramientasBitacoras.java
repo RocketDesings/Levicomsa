@@ -25,12 +25,10 @@ public class HerramientasBitacoras {
     private JPanel panelFecha;
     private JPanel panelFiltrar;
     private JScrollPane scrDatos;
-
     private JComboBox<String>  cmbMes;       // Mes (texto)
     private JComboBox<String>  cmbFecha;     // Año (uso el nombre original)
     private JComboBox<Integer> cmbDesde;     // Día desde (1..31)
     private JComboBox<Integer> cmbHasta;     // Día hasta (1..31)
-
     private JPanel panelOpciones;
     private JCheckBox checkSucursal;
     private JButton btnCSV;
@@ -54,18 +52,22 @@ public class HerramientasBitacoras {
     private static final DateTimeFormatter DF_FECHA_HH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     // ====== PALETA / TEMA (consistente con PantallaAsesor) ======
-    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
-    private static final Color GREEN_BASE   = new Color(0x16A34A);
-    private static final Color GREEN_SOFT   = new Color(0x22C55E);
     private static final Color BG_CANVAS    = new Color(0xF3F4F6);
-    private static final Color CARD_BG      = Color.WHITE;
     private static final Color TEXT_PRIMARY = new Color(0x111827);
     private static final Color TEXT_MUTED   = new Color(0x6B7280);
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
     private static final Color BORDER_FOCUS = new Color(0x059669);
     private static final Color TABLE_ALT    = new Color(0xF9FAFB);
     private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
-
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color RED_BASE     = new Color(0xDC2626);
+    private static final Color RED_HOV      = new Color(0xD1D5DB);
+    private static final Color RED_PR       = new Color(0x9CA3AF);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color BORDER_SOFT  = new Color(0x000000);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
     // ======= API =======
     /** Abre la ventana evitando duplicados y trayéndola al frente. */
     public static void abrir(Window owner, int usuarioId, int sucursalIdSesion) {
@@ -124,7 +126,7 @@ public class HerramientasBitacoras {
         decorateAsCard(panelOpciones);
         decorateAsCard(panelTabla);
         decorateAsCard(panelTitulo);
-
+        decorateAsCard(panelMain);  
         // tipografías básicas
         Font base = new Font("Segoe UI", Font.PLAIN, 13);
         UIManager.put("Label.font", base);
@@ -154,16 +156,6 @@ public class HerramientasBitacoras {
         if (cmbTrabajador != null)   cmbTrabajador.setForeground(TEXT_PRIMARY);
 
         if (tblDatos != null) tblDatos.setRowHeight(26);
-    }
-
-    private void decorateAsCard(JComponent c) {
-        if (c == null) return;
-        c.setOpaque(true);
-        c.setBackground(CARD_BG);
-        c.setBorder(BorderFactory.createCompoundBorder(
-                new MatteBorder(1,1,1,1, BORDER_SOFT),
-                new EmptyBorder(10,10,10,10)
-        ));
     }
 
     private void prepararTabla() {
@@ -522,23 +514,6 @@ public class HerramientasBitacoras {
         if (btnCSV != null) btnCSV.setEnabled(!busy);
     }
 
-    // ======= estilos reutilizables =======
-    private void stylePrimaryButton(JButton b) {
-        if (b == null) return;
-        b.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
-        b.setBorder(new EmptyBorder(10,18,10,18));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-    private void styleExitButton(JButton b) {
-        if (b == null) return;
-        Color ROJO_BASE = new Color(0xDC2626);
-        Color GRIS_HOV  = new Color(0xD1D5DB);
-        Color GRIS_PRE  = new Color(0x9CA3AF);
-        b.setUI(new ModernButtonUI(ROJO_BASE, GRIS_HOV, GRIS_PRE, Color.BLACK, 12, true));
-        b.setBorder(new EmptyBorder(10,18,10,18));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-
     private static class ModernButtonUI extends BasicButtonUI {
         private final Color base, hover, pressed, text;
         private final int radius;
@@ -618,7 +593,29 @@ public class HerramientasBitacoras {
             return comp;
         }
     }
-
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(RED_BASE, RED_HOV, RED_PR, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+    //ESTILO COMUN
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
     // ======= helpers =======
     /** Item para combos con id + texto. */
     private static class ComboItem {

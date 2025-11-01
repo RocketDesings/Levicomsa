@@ -1,6 +1,5 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
@@ -18,12 +17,22 @@ public class CRUDServicios {
     private JButton btnModificarServicio;      // del .form
     private JButton btnEliminarServicio;       // del .form
     private JButton btnCancelar;               // del .form
-
     private JComboBox<CategoriaItem> cmbCategoria; // del .form (filtro por categoría)
     private JPanel panelCategoria;
     private JPanel panelMain;
     private JLabel lblEtiqueta;
-
+    private JPanel panelContenedor;
+    private JLabel lblTitulo;
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color RED_BASE     = new Color(0xDC2626);
+    private static final Color RED_HOV      = new Color(0xD1D5DB);
+    private static final Color RED_PR       = new Color(0x9CA3AF);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color BORDER_SOFT  = new Color(0x000000);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
     // ===== contexto =====
     private final int usuarioId;
     private final int sucursalId;
@@ -85,6 +94,9 @@ public class CRUDServicios {
         if (btnEliminarServicio != null) {
             btnEliminarServicio.addActionListener(e -> eliminarServicioSeleccionado());
         }
+        decorateAsCard(panelContenedor);
+        decorateAsCard(panelMain);
+        decorateAsCard(panelTabla);
     }
 
     // ============== DIALOG HELPER ==============
@@ -341,12 +353,8 @@ public class CRUDServicios {
         // 4) Estilos de color
         stylePrimaryButton(btnAgregarServicio);
         stylePrimaryButton(btnModificarServicio);
-        styleDangerButton(btnEliminarServicio);
-        styleDangerButton(btnCancelar);
-
-        // 5) Quitar “loguito/título” superior si existe
-        hideHeaderIconOrTitle(panelMain);
-
+        styleExitButton(btnEliminarServicio);
+        styleExitButton(btnCancelar);
     }
 
     private void makeBig(JButton b, boolean primary) {
@@ -359,20 +367,6 @@ public class CRUDServicios {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    private void hideHeaderIconOrTitle(Container root) {
-        if (root == null) return;
-        for (Component c : root.getComponents()) {
-            if (c instanceof JLabel lbl) {
-                String t = lbl.getText() != null ? lbl.getText().trim().toLowerCase() : "";
-                boolean looksTitle = t.contains("servicio"); // "Servicios", "Servicios Registrados", etc.
-                boolean hasIcon = lbl.getIcon() != null;
-                if (looksTitle || hasIcon) {
-                    lbl.setVisible(false);
-                }
-            }
-            if (c instanceof Container child) hideHeaderIconOrTitle(child);
-        }
-    }
     // --- Renderer zebra para la tabla ---
     static class ZebraRenderer extends javax.swing.table.DefaultTableCellRenderer {
         private final JTable table;
@@ -405,49 +399,27 @@ public class CRUDServicios {
         }
     }
 
-    // ======== estilos de botón (idénticos a ModificarServicio) ========
     private void stylePrimaryButton(JButton b) {
         if (b == null) return;
-        b.setUI(new ModernButtonUI(new Color(0x22C55E), new Color(0x16A34A), new Color(0x15803D),
-                Color.WHITE, 12, true));
+        b.setUI(new HerramientasAdmin.ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
     }
-    private void styleDangerButton(JButton b) {
+    private void styleExitButton(JButton b) {
         if (b == null) return;
-        b.setUI(new ModernButtonUI(new Color(0xEF4444), new Color(0xDC2626), new Color(0xB91C1C),
-                Color.WHITE, 12, true));
+        b.setUI(new HerramientasAdmin.ModernButtonUI(RED_BASE, RED_HOV, RED_PR, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
     }
-
-    static class ModernButtonUI extends BasicButtonUI {
-        private final Color bg, hover, press, fg;
-        private final int arc;
-        private final boolean filled;
-
-        ModernButtonUI(Color bg, Color hover, Color press, Color fg, int arc, boolean filled) {
-            this.bg = bg; this.hover = hover; this.press = press; this.fg = fg; this.arc = arc; this.filled = filled;
-        }
-
-        @Override public void installUI(JComponent c) {
-            super.installUI(c);
-            AbstractButton b = (AbstractButton) c;
-            b.setOpaque(false);
-            b.setBorder(new EmptyBorder(10, 24, 10, 24)); // un poco más grandes
-            b.setRolloverEnabled(true);
-            b.setFocusPainted(false);
-            b.setForeground(fg);
-        }
-
-        @Override public void paint(Graphics g, JComponent c) {
-            AbstractButton b = (AbstractButton) c;
-            ButtonModel m = b.getModel();
-            Color fill = m.isPressed() ? press : (m.isRollover() ? hover : bg);
-
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(fill);
-            g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), arc, arc);
-            g2.dispose();
-
-            super.paint(g, c);
-        }
+    //ESTILO COMUN
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 }

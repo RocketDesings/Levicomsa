@@ -18,7 +18,18 @@ public class CRUDSucursales {
     private JButton btnAgregarSucursal;
     private JButton btnModificarSucursal;
     private JButton btnEliminarSucursal;
-
+    private JPanel panelContenedor;
+    private JLabel lblEtiqueta;
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color RED_BASE     = new Color(0xDC2626);
+    private static final Color RED_HOV      = new Color(0xD1D5DB);
+    private static final Color RED_PR       = new Color(0x9CA3AF);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color BORDER_SOFT  = new Color(0x000000);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
     // ===== contexto =====
     private final int usuarioId;
     private final int sucursalId;
@@ -219,10 +230,11 @@ public class CRUDSucursales {
 
         stylePrimaryButton(btnAgregarSucursal);
         stylePrimaryButton(btnModificarSucursal);
-        styleDangerButton(btnEliminarSucursal);
-        styleDangerButton(btnCancelar);
-
-        hideHeaderIconOrTitle(panelMain);
+        styleExitButton(btnEliminarSucursal);
+        styleExitButton(btnCancelar);
+        decorateAsCard(panelMain);
+        decorateAsCard(panelContenedor);
+        decorateAsCard(panelTabla);
     }
 
     private void makeBig(JButton b) {
@@ -233,30 +245,6 @@ public class CRUDSucursales {
         b.setMinimumSize(big);
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-
-    private void stylePrimaryButton(JButton b) {
-        if (b == null) return;
-        b.setUI(new ModernButtonUI(new Color(0x22C55E), new Color(0x16A34A), new Color(0x15803D),
-                Color.WHITE, 12, true));
-    }
-    private void styleDangerButton(JButton b) {
-        if (b == null) return;
-        b.setUI(new ModernButtonUI(new Color(0xEF4444), new Color(0xDC2626), new Color(0xB91C1C),
-                Color.WHITE, 12, true));
-    }
-
-    private void hideHeaderIconOrTitle(Container root) {
-        if (root == null) return;
-        for (Component c : root.getComponents()) {
-            if (c instanceof JLabel lbl) {
-                String t = (lbl.getText() != null) ? lbl.getText().trim().toLowerCase() : "";
-                boolean looksTitle = t.contains("sucursal");
-                boolean hasIcon = lbl.getIcon() != null;
-                if (looksTitle || hasIcon) lbl.setVisible(false);
-            }
-            if (c instanceof Container child) hideHeaderIconOrTitle(child);
-        }
     }
 
     // ===== Renderer zebra =====
@@ -317,7 +305,29 @@ public class CRUDSucursales {
         if (panelBotones != null) r.add(panelBotones, BorderLayout.SOUTH);
         return r;
     }
-
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(RED_BASE, RED_HOV, RED_PR, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+    //ESTILO COMUN
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
     private static String nvl(String s) { return (s != null) ? s : ""; }
     private static String ts(Timestamp t) { return (t != null) ? t.toString() : ""; }
 }

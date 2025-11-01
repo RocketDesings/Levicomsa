@@ -36,7 +36,6 @@ public class PantallaAdmin implements Refrescable {
     private JLabel lblImagen;
     private JLabel lblTitulo;
     private JLabel lblSlogan;
-
     private JPanel panelInfo;
     private JPanel panelExtra;
     private JPanel panelBotones;
@@ -56,6 +55,7 @@ public class PantallaAdmin implements Refrescable {
     private JPanel panelTabla;
     private JPanel panelInfo1;
     private JPanel panelLogoHora;
+    private JButton btnConsultarCortes;
     private JButton buscarButton;
 
     // ====== comportamiento ======
@@ -92,6 +92,8 @@ public class PantallaAdmin implements Refrescable {
 
     // hover visual para la tabla
     private int hoverRow = -1;
+    // 1) Campo para evitar duplicados (colócalo junto a tus otros dialogs)
+    private JDialog dlgConsultarCortes;
 
     // ---------- constructores ----------
     public PantallaAdmin() { this(-1); }
@@ -148,6 +150,7 @@ public class PantallaAdmin implements Refrescable {
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
         if (btnEliminar != null) btnEliminar.addActionListener(e -> eliminarCliente());
+        if (btnConsultarCortes != null) btnConsultarCortes.addActionListener(e -> abrirConsultarCortes());
 
         // Deshabilita Cobrar hasta tener sucursal válida
         if (btnCobrar != null) btnCobrar.setEnabled(false);
@@ -787,4 +790,21 @@ public class PantallaAdmin implements Refrescable {
             g2.dispose();
         }
     }
+    // 3) Metodo helper
+    private void abrirConsultarCortes() {
+        if (dlgConsultarCortes != null && dlgConsultarCortes.isDisplayable()) {
+            dlgConsultarCortes.toFront();
+            dlgConsultarCortes.requestFocus();
+            return;
+        }
+        // owner robusto: usa la ventana que contiene tu panel raíz
+        Window owner = SwingUtilities.getWindowAncestor(panelMain); // cambia panelMain si tu raíz se llama distinto
+        dlgConsultarCortes = ConsultarCortesCaja.createDialog(owner);
+        dlgConsultarCortes.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosed  (java.awt.event.WindowEvent e) { dlgConsultarCortes = null; }
+            @Override public void windowClosing (java.awt.event.WindowEvent e) { dlgConsultarCortes = null; }
+        });
+        dlgConsultarCortes.setVisible(true);
+    }
+
 }

@@ -18,7 +18,23 @@ public class CRUDEmpleados {
     private JPanel panelTabla;
     private JScrollPane scrTablaEmpleados;
     private JTable tblEmpleados;
-
+    private JPanel panelContenedor;
+    private JLabel lblEtiqueta;
+    private JLabel lblTitulo;
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color RED_BASE     = new Color(0xDC2626);
+    private static final Color RED_HOV      = new Color(0xD1D5DB);
+    private static final Color RED_PR       = new Color(0x9CA3AF);
+    private static final Color BG_CANVAS    = new Color(0xF3F4F6);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color BORDER_SOFT  = new Color(0x000000);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color TEXT_MUTED   = new Color(0x6B7280);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
     // --- contexto ---
     private final Window owner;
     private final int usuarioId;
@@ -198,13 +214,14 @@ public class CRUDEmpleados {
         makeBig(btnModificarEmpleado);
         makeBig(btnEliminarEmpleado);
         makeBig(btnCancelar);
-
         stylePrimaryButton(btnAgregarEmpleado);
         stylePrimaryButton(btnModificarEmpleado);
-        styleDangerButton(btnEliminarEmpleado);
-        styleDangerButton(btnCancelar);
-
-        hideHeaderIconOrTitle(panelMain);
+        styleExitButton(btnEliminarEmpleado);
+        styleExitButton(btnCancelar);
+        decorateAsCard(panelMain);
+        decorateAsCard(panelTabla);
+        decorateAsCard(panelContenedor);
+        lblEtiqueta.setFont(fTitle);
     }
 
     private void makeBig(JButton b) {
@@ -215,30 +232,6 @@ public class CRUDEmpleados {
         b.setMinimumSize(big);
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-
-    private void stylePrimaryButton(JButton b) {
-        if (b == null) return;
-        b.setUI(new ModernButtonUI(new Color(0x22C55E), new Color(0x16A34A), new Color(0x15803D),
-                Color.WHITE, 12, true));
-    }
-    private void styleDangerButton(JButton b) {
-        if (b == null) return;
-        b.setUI(new ModernButtonUI(new Color(0xEF4444), new Color(0xDC2626), new Color(0xB91C1C),
-                Color.WHITE, 12, true));
-    }
-
-    private void hideHeaderIconOrTitle(Container root) {
-        if (root == null) return;
-        for (Component c : root.getComponents()) {
-            if (c instanceof JLabel lbl) {
-                String t = (lbl.getText() != null) ? lbl.getText().trim().toLowerCase() : "";
-                boolean looksTitle = t.contains("empleado");
-                boolean hasIcon = lbl.getIcon() != null;
-                if (looksTitle || hasIcon) lbl.setVisible(false);
-            }
-            if (c instanceof Container child) hideHeaderIconOrTitle(child);
-        }
     }
 
     // ===== Renderer zebra =====
@@ -308,7 +301,29 @@ public class CRUDEmpleados {
         for (Frame f : Frame.getFrames()) if (f.isVisible()) return f;
         return JOptionPane.getRootFrame();
     }
-
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(RED_BASE, RED_HOV, RED_PR, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+    //ESTILO COMUN
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
     private static String nvl(String s) { return s != null ? s : ""; }
     private static String ts(Timestamp t) { return (t != null) ? t.toString() : ""; }
 }

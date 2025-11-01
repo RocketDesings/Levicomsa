@@ -176,10 +176,16 @@ public class CorteCaja {
         if (btnExportarCSV != null) {
             btnExportarCSV.addActionListener(e -> exportarCSV());
         }
-        if (btnCerrarCorte != null) {
-            btnCerrarCorte.addActionListener(e ->
-                    JOptionPane.showMessageDialog(dialog, "Cierre de corte (pendiente implementar persistencia)."));
-        }
+// Cerrar corte → abrir alerta y, si confirman, guardar y salir a Login
+        btnCerrarCorte.addActionListener(e ->
+                AlertaFinalizarCorte.mostrar(dialog, () -> {
+                    if (guardarCorteCajaEnBD()) {
+                        cerrarTodoYVolverAlLogin();
+                    }
+                })
+        );
+
+
         // === abrir Honorarios (simple, sin duplicados) ===
         if (btnHonorarios != null) {
             btnHonorarios.addActionListener(e -> abrirHonorarios());
@@ -384,6 +390,13 @@ public class CorteCaja {
             lblContado.setText(formatea(0));
 
     }
+    private void cerrarTodaLaInterfazYAbrirLogin() {
+        for (Window w : Window.getWindows()) {
+            try { w.dispose(); } catch (Exception ignore) {}
+        }
+        // Abre Login
+        SwingUtilities.invokeLater(Login::new);
+    }
 
     // ================== EXPORTAR ==================
     private void exportarCSV() {
@@ -559,10 +572,91 @@ public class CorteCaja {
                     "No se pudo calcular honorarios de contadores:\n" + e.getMessage());
         }
         return 0.0;
+
+    }
+    // ====== Persistencia del corte ======
+    private boolean guardarCorteCajaEnBD() {
+        // 1) Validar que “Total contado” sea numérico
+        String contadoTx = safeText(lblContado);
+        if (!contadoTx.matches(".*\\d.*")) {
+            JOptionPane.showMessageDialog(dialog,
+                    "Ingresa el efectivo contado antes de cerrar el corte.");
+            return false;
+        }
+
+        final String sql = """
+        INSERT INTO corte_caja_resumen
+        (usuario_id, monto_inicial, total_efectivo, total_transferencia,
+         total_entradas, total_salidas, total_cobros_servicios, total_cobros_extras,
+         total_contadores, total_en_caja, total_contado, diferencia, ingresos_totales, generado_en)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, NOW())
+        """;
+
+        try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1,  usuarioId);
+            ps.setBigDecimal(2,  money(lblFondoInicial));
+            ps.setBigDecimal(3,  money(lblIngresosEfectivo));
+            ps.setBigDecimal(4,  money(lblIngresosTransferencia));
+            ps.setBigDecimal(5,  money(lblEntradas));
+            ps.setBigDecimal(6,  money(lblsalidas));
+            ps.setBigDecimal(7,  money(lblVentas));            // cobros servicios
+            ps.setBigDecimal(8,  money(lblExtras));            // cobros extras
+            ps.setBigDecimal(9,  money(lblTotalContadores));   // 60% contadores
+            ps.setBigDecimal(10, money(lblEfectivoTeorico));   // total_en_caja (teórico)
+            ps.setBigDecimal(11, money(lblContado));           // total_contado (usuario)
+            ps.setBigDecimal(12, money(lblDiferencia));
+            ps.setBigDecimal(13, money(lblIngresosTotales));
+            ps.executeUpdate();
+            return true;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(dialog, "No se pudo guardar el corte:\n" + ex.getMessage());
+            return false;
+        }
     }
 
 
+    // Requiere que el usuario haya capturado un número real (no "En Espera", vacío, —, etc.)
+    private boolean contadoIngresadoValido() {
+        String s = (lblContado != null && lblContado.getText() != null) ? lblContado.getText().trim() : "";
+        s = s.replace("\u00A0","").replace("\u202F","").replace("\u2007","")
+                .replace("$","").replace(",","").trim();
+        if (s.isEmpty() || s.equalsIgnoreCase("en espera") || s.equals("—") || s.equals("-")) return false;
+        // Acepta 123, 123.45 o 123,45
+        return s.matches("[-+]?\\d+(?:[.,]\\d{1,2})?");
+    }
 
+    // Cierra todas las ventanas abiertas y vuelve a Login
+    private void cerrarTodoYAbrirLogin() {
+        // Cierra este diálogo primero, por si sigue abierto
+        if (dialog != null && dialog.isDisplayable()) {
+            try { dialog.dispose(); } catch (Exception ignore) {}
+        }
+        // Cierra TODAS las ventanas (JFrames y JDialogs)
+        for (Window w : Window.getWindows()) {
+            if (w != null && w.isDisplayable()) {
+                try { w.dispose(); } catch (Exception ignore) {}
+            }
+        }
+        // Abre Login en el EDT
+        SwingUtilities.invokeLater(Login::new);
+    }
+    private void cerrarTodoYVolverAlLogin() {
+        for (Window w : Window.getWindows()) {
+            try { w.dispose(); } catch (Exception ignore) {}
+        }
+        SwingUtilities.invokeLater(Login::new);
+    }
+    private static String safeText(JLabel l) {
+        return (l != null && l.getText()!=null) ? l.getText().trim() : "";
+    }
+    private static java.math.BigDecimal money(JLabel l) {
+        String s = safeText(l);
+        // deja solo dígitos, punto y signo
+        s = s.replaceAll("[^0-9.\\-]", "");
+        if (s.isEmpty() || s.equals("-") || s.equals(".")) s = "0";
+        return new java.math.BigDecimal(s).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
 
 
 }

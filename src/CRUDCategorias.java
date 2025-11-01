@@ -19,10 +19,27 @@ public class CRUDCategorias {
     private JButton btnEliminarCategorias;
     private JButton btnCancelar;
     private JPanel panelMain;
+    private JPanel panelBotones2;
 
     // --- Contexto (por si usas triggers/bitácoras) ---
     private final int usuarioId;
     private final int sucursalId;
+
+    //COLORES
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color RED_BASE     = new Color(0xDC2626);
+    private static final Color RED_HOV      = new Color(0xD1D5DB);
+    private static final Color RED_PR       = new Color(0x9CA3AF);
+    private static final Color BG_CANVAS    = new Color(0xF3F4F6);
+    private static final Color CARD_BG      = Color.WHITE;
+    private static final Color BORDER_SOFT  = new Color(0x000000);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color TEXT_MUTED   = new Color(0x6B7280);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
 
     // --- Tabla ---
     private DefaultTableModel modelo;
@@ -37,8 +54,6 @@ public class CRUDCategorias {
         configurarTabla();
         estilizarBotonera();
         cargarCategorias();
-
-        if (lblEtiqueta != null) lblEtiqueta.setText("Categorías de servicio");
 
         // Acciones
         if (btnCancelar != null) {
@@ -74,6 +89,9 @@ public class CRUDCategorias {
         if (btnEliminarCategorias != null) {
             btnEliminarCategorias.addActionListener(e -> eliminarCategoriaSeleccionada());
         }
+        decorateAsCard(panelTabla);
+        decorateAsCard(panelBotones2);
+        decorateAsCard(panelMain);
     }
 
     /** Crea y muestra el diálogo centrado. */
@@ -205,21 +223,27 @@ public class CRUDCategorias {
 
     // ============== Estilos ==============
     private void estilizarBotonera() {
-        if (btnAgregarCategorias != null) stylePrimary(btnAgregarCategorias);
-        if (btnModificarCategorias != null) stylePrimary(btnModificarCategorias);
-        if (btnEliminarCategorias != null) styleDanger(btnEliminarCategorias);
-        if (btnCancelar != null) styleDanger(btnCancelar);
+        if (btnAgregarCategorias != null) stylePrimaryButton(btnAgregarCategorias);
+        if (btnModificarCategorias != null) stylePrimaryButton(btnModificarCategorias);
+        if (btnEliminarCategorias != null) styleExitButton(btnEliminarCategorias);
+        if (btnCancelar != null) styleExitButton(btnCancelar);
     }
 
-    private void stylePrimary(JButton b) {
-        b.setUI(new ModernButtonUI(new Color(0x22C55E), new Color(0x16A34A), new Color(0x15803D), Color.WHITE, 12, true));
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setForeground(Color.WHITE);
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
     }
-    private void styleDanger(JButton b) {
-        b.setUI(new ModernButtonUI(new Color(0xEF4444), new Color(0xDC2626), new Color(0xB91C1C), Color.WHITE, 12, true));
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new HerramientasAdmin.ModernButtonUI(RED_BASE, RED_HOV, RED_PR, Color.WHITE, 14, true));
+        b.setBorder(new EmptyBorder(12,18,12,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setForeground(Color.WHITE);
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
     }
 
     // Botón moderno (mismo que venimos usando)
@@ -276,5 +300,12 @@ public class CRUDCategorias {
     private static boolean isFK(SQLException e) {
         return "23000".equals(e.getSQLState()) || e.getErrorCode() == 1451 ||
                 (e.getMessage() != null && e.getMessage().toLowerCase().contains("foreign key"));
+    }
+    //ESTILO COMUN
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 }

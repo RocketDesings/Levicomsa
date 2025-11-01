@@ -3,8 +3,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.plaf.basic.BasicButtonUI;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
 
 public class HerramientasAdmin extends JDialog {
@@ -42,6 +41,12 @@ public class HerramientasAdmin extends JDialog {
     private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
     private static final Color TEXT_MUTED   = new Color(0x6B7280);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+
+    // (se mantiene aunque no se muestra; no afecta funcionalidad existente)
+    private JFrame frame;
 
     public HerramientasAdmin(Window owner, int usuarioId, int sucursalId) {
         super(owner, "Herramientas de administración", ModalityType.MODELESS);
@@ -49,13 +54,58 @@ public class HerramientasAdmin extends JDialog {
         this.sucursalId = sucursalId;
 
         // Contenedor raíz sin “bordes raros”
+        frame = new JFrame("Registrar ENTRADA");
+        frame.setUndecorated(true);
+        frame.setContentPane(panelMain);
+        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent e) {
+                frame.setShape(new RoundRectangle2D.Double(0, 0, frame.getWidth(), frame.getHeight(), 14, 14));
+            }
+        });
+
         setContentPane(buildRoot());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setMinimumSize(new Dimension(640, 420));
-        pack();
+
+        // ===== Tamaño compacto y controlado =====
+        setResizable(false);                             // evita que se “estire” sin querer
+        Dimension scr = Toolkit.getDefaultToolkit().getScreenSize();
+        // límites máximos relativos a pantalla
+        int maxW = Math.max(520, (int)(scr.width  * 0.45));   // 45% del ancho máx
+        int maxH = Math.max(380, (int)(scr.height * 0.65));   // 65% del alto máx
+        // preferido objetivo (compacto)
+        setPreferredSize(new Dimension(500, 680));
+        pack(); // calcula en base a preferred/preferred de contenidos
+
+        // clamp final (si el .form pide más, lo recortamos agradablemente)
+        Dimension d = getSize();
+        int w = Math.min(d.width,  maxW);
+        int h = Math.min(d.height, maxH);
+        w = Math.max(w, 500);  // mínimo cómodo
+        h = Math.max(h, 680);
+        setSize(w, h);
+
         setLocationRelativeTo(owner);
 
+        // Decoración / estilo
+        decorateAsCard(panelBtns);
+        decorateAsCard(panelMain);
+        styleExitButton(btnCancelar);
+        stylePrimaryButton(btnGestionarServicios);
+        stylePrimaryButton(btnGestionarSucursales);
+        stylePrimaryButton(btnGestionarCategorias);
+        stylePrimaryButton(btnGestionarUsuario);
+        stylePrimaryButton(btnGestionarEmpleados);
         applyTheme();
+
+        // ESC para cerrar rápido
+        if (panelMain != null) {
+            panelMain.registerKeyboardAction(
+                    e -> dispose(),
+                    KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                    JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
+            );
+        }
 
         if (btnCancelar != null) btnCancelar.addActionListener(e -> dispose());
 
@@ -67,16 +117,16 @@ public class HerramientasAdmin extends JDialog {
         if (btnGestionarEmpleados != null) {
             btnGestionarEmpleados.addActionListener(e -> abrirCRUDEmpleados());
         }
-        // Usuarios (tal cual lo pediste)
+        // Usuarios
         if (btnGestionarUsuario != null) {
             btnGestionarUsuario.addActionListener(e -> {
                 if (dlgUsuarios != null && dlgUsuarios.isDisplayable()) {
                     dlgUsuarios.toFront(); dlgUsuarios.requestFocus(); return;
                 }
                 dlgUsuarios = CRUDUsuarios.createDialog(this, usuarioId, sucursalId);
-                dlgUsuarios.addWindowListener(new java.awt.event.WindowAdapter() {
-                    @Override public void windowClosed (java.awt.event.WindowEvent e) { dlgUsuarios = null; }
-                    @Override public void windowClosing(java.awt.event.WindowEvent e) { dlgUsuarios = null; }
+                dlgUsuarios.addWindowListener(new WindowAdapter() {
+                    @Override public void windowClosed (WindowEvent e) { dlgUsuarios = null; }
+                    @Override public void windowClosing(WindowEvent e) { dlgUsuarios = null; }
                 });
                 dlgUsuarios.setVisible(true);
             });
@@ -88,9 +138,9 @@ public class HerramientasAdmin extends JDialog {
                     dlgCategorias.toFront(); dlgCategorias.requestFocus(); return;
                 }
                 dlgCategorias = CRUDCategorias.createDialog(this, usuarioId, sucursalId);
-                dlgCategorias.addWindowListener(new java.awt.event.WindowAdapter() {
-                    @Override public void windowClosed (java.awt.event.WindowEvent e) { dlgCategorias = null; }
-                    @Override public void windowClosing(java.awt.event.WindowEvent e) { dlgCategorias = null; }
+                dlgCategorias.addWindowListener(new WindowAdapter() {
+                    @Override public void windowClosed (WindowEvent e) { dlgCategorias = null; }
+                    @Override public void windowClosing(WindowEvent e) { dlgCategorias = null; }
                 });
                 dlgCategorias.setVisible(true);
             });
@@ -116,25 +166,15 @@ public class HerramientasAdmin extends JDialog {
 
     // ===== Estilo / Tema =====
     private void applyTheme() {
-        // Fondo general
         getContentPane().setBackground(BG_CANVAS);
         if (panelMain != null) {
             panelMain.setOpaque(true);
             panelMain.setBackground(CARD_BG);
-            // línea sutil inferior para separar si hay títulos en tu .form
             panelMain.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
         }
         for (JPanel p : new JPanel[]{panelBtns, panelBtn1, panelBtn2}) {
             if (p != null) { p.setOpaque(false); p.setBorder(null); }
         }
-
-        // Botones
-        stylePrimaryButton(btnGestionarUsuario);
-        stylePrimaryButton(btnGestionarServicios);
-        stylePrimaryButton(btnGestionarEmpleados);
-        stylePrimaryButton(btnGestionarSucursales);
-        stylePrimaryButton(btnGestionarCategorias);
-        styleExitButton(btnCancelar);
     }
 
     private void stylePrimaryButton(JButton b) {
@@ -199,7 +239,7 @@ public class HerramientasAdmin extends JDialog {
     }
 
     // ===== Botón moderno (redondeado) =====
-    private static class ModernButtonUI extends BasicButtonUI {
+    static class ModernButtonUI extends BasicButtonUI {
         private final Color base, hover, pressed, text;
         private final int radius;
         private final boolean filled;
@@ -213,6 +253,7 @@ public class HerramientasAdmin extends JDialog {
             b.setBorderPainted(false);
             b.setForeground(text);
         }
+
         @Override public void paint(Graphics g, JComponent c) {
             AbstractButton b = (AbstractButton) c;
             Graphics2D g2 = (Graphics2D) g.create();
@@ -220,7 +261,7 @@ public class HerramientasAdmin extends JDialog {
 
             ButtonModel m = b.getModel();
             Color fill = base;
-            if (m.isPressed())      fill = pressed;
+            if (m.isPressed())       fill = pressed;
             else if (m.isRollover()) fill = hover;
 
             Shape rr = new RoundRectangle2D.Float(0, 0, b.getWidth(), b.getHeight(), radius*2f, radius*2f);
@@ -240,5 +281,12 @@ public class HerramientasAdmin extends JDialog {
             g2.drawString(b.getText(), tx, ty);
             g2.dispose();
         }
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 }

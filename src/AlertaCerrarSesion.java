@@ -10,7 +10,6 @@ public class AlertaCerrarSesion extends JFrame {
     private JButton btnConfirmar;
     private JButton regresarButton;
     private JLabel lblTexto;
-    private JLabel lblIcono;
     private JPanel panelBotones;
     private JPanel panelTitulo;
     private JPanel panelMensaje;
@@ -23,7 +22,7 @@ public class AlertaCerrarSesion extends JFrame {
     private static final Color GREEN_BASE = new Color(0x16A34A);
     private static final Color GREEN_HOV  = new Color(0x22C55E);
     private static final Color GREEN_PR   = new Color(0x0A6B2A);
-    private static final Color GRAY_BASE  = new Color(0xE5E7EB);
+    private static final Color GRAY_BASE  = new Color(0xDCDDE1);
     private static final Color GRAY_HOV   = new Color(0xD1D5DB);
     private static final Color GRAY_PR    = new Color(0x9CA3AF);
     private static final Color CARD_BG      = new Color(255, 255, 255);
@@ -57,10 +56,6 @@ public class AlertaCerrarSesion extends JFrame {
             panelMain.setBackground(BG_CANVAS);
             panelMain.setBorder(new EmptyBorder(16, 16, 16, 16));
         }
-        if (panelMensaje != null) {
-            panelMensaje.setBackground(GRAY_HOV);
-            panelMensaje.setBorder(new EmptyBorder(16, 16, 16, 16));
-        }
         if (panelTitulo != null) {
             panelTitulo.setBackground(BG_CANVAS);
             panelTitulo.setBorder(new EmptyBorder(16, 16, 16, 16));
@@ -68,7 +63,7 @@ public class AlertaCerrarSesion extends JFrame {
         if (panelBotones != null) panelBotones.setOpaque(false);
         if (lblTexto != null) {
             lblTexto.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-            lblTexto.setOpaque(false);
+            lblTexto.setOpaque(true);
         }
 
         // Botones sin bordes raros ni focus ring del LAF
@@ -76,6 +71,7 @@ public class AlertaCerrarSesion extends JFrame {
         styleSecondary(regresarButton);// gris
         decorateAsCard(panelMain);
         decorateAsCard(panelExtra);
+        panelMensaje.setOpaque(true);
         lblTexto.setFont(fText);
     }
 
@@ -92,7 +88,7 @@ public class AlertaCerrarSesion extends JFrame {
 
     private void styleSecondary(JButton b) {
         if (b == null) return;
-        b.setUI(new FlatButtonUI(GRAY_PR,GRAY_BASE, GRAY_HOV, TEXT_PRI, 14));
+        b.setUI(new FlatButtonUI(GRAY_BASE,GRAY_HOV, GRAY_PR, TEXT_PRI, 14));
         b.setBorder(new EmptyBorder(10, 18, 10, 18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setFocusPainted(false);
@@ -150,7 +146,7 @@ public class AlertaCerrarSesion extends JFrame {
     private void decorateAsCard(JComponent c) {
         if (c == null) return;
         c.setOpaque(true);
-        c.setBackground(GRAY_BASE);
+        c.setBackground(CARD_BG);
         c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 }
