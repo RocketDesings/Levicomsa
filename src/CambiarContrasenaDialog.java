@@ -19,7 +19,12 @@ public class CambiarContrasenaDialog extends JDialog {
     private JButton btnGuardar;
     private JButton btnCancelar;
 
-    // Paleta alineada con “Agregar Cliente”
+    // Nuevos widgets UI (solo presentación)
+    private JProgressBar barFortaleza;
+    private JLabel lblFortaleza;
+    private JLabel lblCaps;
+
+    // Paleta
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
     private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
@@ -27,7 +32,7 @@ public class CambiarContrasenaDialog extends JDialog {
     private static final Color CARD_BG      = Color.WHITE;
     private static final Color TEXT_PRIMARY = new Color(0x111827);
     private static final Color TEXT_MUTED   = new Color(0x6B7280);
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
     private static final Color BORDER_FOCUS = new Color(0x059669);
 
     public CambiarContrasenaDialog(int usuarioId, boolean forzado) {
@@ -38,9 +43,9 @@ public class CambiarContrasenaDialog extends JDialog {
         setDefaultCloseOperation(forzado ? DO_NOTHING_ON_CLOSE : DISPOSE_ON_CLOSE);
         setResizable(false);
         setUIFont(new Font("Segoe UI", Font.PLAIN, 13));
-        setContentPane(buildContent());
+        setContentPane(buildContent());     // <-- ahora construye header + sidebar + form
         pack();
-        setMinimumSize(new Dimension(560, 380));
+        setMinimumSize(new Dimension(720, 420));
         setLocationRelativeTo(null);
 
         // Atajos
@@ -54,24 +59,93 @@ public class CambiarContrasenaDialog extends JDialog {
         }
     }
 
-    // ================== Construcción UI (estilo Agregar Cliente) ==================
+    // ================== Construcción UI ==================
     private JComponent buildContent() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BG_CANVAS);
 
-        // Título grande centrado
-        JLabel title = new JLabel("CAMBIAR CONTRASEÑA", SwingConstants.CENTER);
-        title.setForeground(TEXT_PRIMARY);
-        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
-        title.setBorder(new EmptyBorder(12, 12, 4, 12));
-        root.add(title, BorderLayout.NORTH);
+        // ===== Header con gradiente =====
+        JPanel header = new GradientPanel(new Color(0x065F46), new Color(0x047857));
+        header.setLayout(new BorderLayout());
+        header.setBorder(new EmptyBorder(14,16,14,16));
 
-        // Panel formulario (card blanca)
+        JLabel title = new JLabel("Cambiar contraseña");
+        title.setForeground(Color.BLACK);
+        title.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 24));
+        title.setAlignmentX(CENTER_ALIGNMENT);
+
+        String subt = forzado
+                ? "Por seguridad, debes actualizar tu contraseña para continuar."
+                : "Actualiza tu contraseña. Mantenla segura y única.";
+        JLabel subtitle = new JLabel(subt);
+        subtitle.setForeground(new Color(0, 0, 0,210));
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        subtitle.setAlignmentX(CENTER_ALIGNMENT);
+
+        JPanel headText = new JPanel();
+        headText.setOpaque(false);
+        headText.setLayout(new BoxLayout(headText, BoxLayout.Y_AXIS));
+        headText.add(title);
+        headText.add(Box.createVerticalStrut(3));
+        headText.add(subtitle);
+        header.add(headText, BorderLayout.WEST);
+        root.add(header, BorderLayout.NORTH);
+
+        decorateAsCard(header);
+        header.setAlignmentX(CENTER_ALIGNMENT);
+        headText.setAlignmentX(CENTER_ALIGNMENT);
+
+        // ===== Centro: sidebar + formulario =====
+        JPanel center = new JPanel(new BorderLayout(16,16));
+        center.setBorder(new EmptyBorder(16,16,16,16));
+        center.setOpaque(false);
+        root.add(center, BorderLayout.CENTER);
+        decorateAsCard(center);
+
+        // --- Sidebar (tips) ---
+        JPanel sidebar = new JPanel();
+        sidebar.setOpaque(true);
+        sidebar.setBackground(CARD_BG);
+        sidebar.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.setPreferredSize(new Dimension(260, 260));
+
+        JLabel tipsTitle = new JLabel("Consejos de seguridad");
+        tipsTitle.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
+        tipsTitle.setForeground(TEXT_PRIMARY);
+        tipsTitle.setBorder(new EmptyBorder(12,12,6,12));
+
+        JLabel tips = new JLabel("<html><ul style='margin-left:10px'>"
+                + "<li>Usa 12+ caracteres cuando sea posible.</li>"
+                + "<li>Combina mayúsculas, minúsculas, números y símbolos.</li>"
+                + "<li>No reutilices contraseñas entre servicios.</li>"
+                + "</ul></html>");
+        tips.setForeground(TEXT_MUTED);
+        tips.setBorder(new EmptyBorder(0,12,12,12));
+
+        JLabel kbdTitle = new JLabel("Atajos");
+        kbdTitle.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 14));
+        kbdTitle.setForeground(TEXT_PRIMARY);
+        kbdTitle.setBorder(new EmptyBorder(2,12,4,12));
+
+        JLabel kbd = new JLabel("<html>• <b>Enter</b>: Guardar<br>• <b>Esc</b>: Cancelar</html>");
+        kbd.setForeground(TEXT_MUTED);
+        kbd.setBorder(new EmptyBorder(0,12,12,12));
+
+        sidebar.add(tipsTitle);
+        sidebar.add(tips);
+        sidebar.add(kbdTitle);
+        sidebar.add(kbd);
+
+        center.add(sidebar, BorderLayout.WEST);
+        decorateAsCard(sidebar);
+
+        // --- Formulario (card) ---
         JPanel formCard = new JPanel(new GridBagLayout());
         formCard.setOpaque(true);
         formCard.setBackground(CARD_BG);
         formCard.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
-        root.add(formCard, BorderLayout.CENTER);
+        center.add(formCard, BorderLayout.CENTER);
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(10, 14, 0, 14);
@@ -90,6 +164,16 @@ public class CambiarContrasenaDialog extends JDialog {
         c.gridx = 2; c.weightx = 0;
         formCard.add(crearChkMostrar(txtActual), c);
 
+        // Indicador de Caps Lock
+        c.gridx = 1; c.gridy++; c.gridwidth = 2;
+        lblCaps = new JLabel("Bloq Mayús activado");
+        lblCaps.setForeground(new Color(0xB91C1C)); // rojo suave
+        lblCaps.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCaps.setVisible(false);
+        lblCaps.setBorder(new EmptyBorder(2,2,2,2));
+        formCard.add(lblCaps, c);
+        c.gridwidth = 1;
+
         // ===== Fila 2: Nueva =====
         c.gridx = 0; c.gridy++; c.weightx = 0;
         formCard.add(label("Nueva contraseña:"), c);
@@ -101,6 +185,21 @@ public class CambiarContrasenaDialog extends JDialog {
 
         c.gridx = 2; c.weightx = 0;
         formCard.add(crearChkMostrar(txtNueva), c);
+
+        // Fortaleza
+        c.gridx = 1; c.gridy++; c.gridwidth = 2;
+        JPanel strengthRow = new JPanel(new BorderLayout(8,0));
+        strengthRow.setOpaque(false);
+        barFortaleza = new JProgressBar(0, 4);
+        barFortaleza.setValue(0);
+        barFortaleza.setStringPainted(false);
+        lblFortaleza = new JLabel("Fortaleza: débil");
+        lblFortaleza.setForeground(TEXT_MUTED);
+        lblFortaleza.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        strengthRow.add(barFortaleza, BorderLayout.CENTER);
+        strengthRow.add(lblFortaleza, BorderLayout.EAST);
+        formCard.add(strengthRow, c);
+        c.gridwidth = 1;
 
         // ===== Fila 3: Repetir =====
         c.gridx = 0; c.gridy++; c.weightx = 0;
@@ -114,19 +213,20 @@ public class CambiarContrasenaDialog extends JDialog {
         c.gridx = 2; c.weightx = 0;
         formCard.add(crearChkMostrar(txtRepetir), c);
 
-        // Tips
+        // Tips mínimos
         c.gridx = 1; c.gridy++; c.gridwidth = 2;
-        JLabel tips = new JLabel("Mínimo 8 caracteres. Usa mayúsculas, minúsculas y números.");
-        tips.setForeground(TEXT_MUTED);
-        tips.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tips.setBorder(new EmptyBorder(4, 2, 8, 2));
-        formCard.add(tips, c);
+        JLabel tipsMin = new JLabel("Mínimo 8 caracteres. Usa mayúsculas, minúsculas y números.");
+        tipsMin.setForeground(TEXT_MUTED);
+        tipsMin.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tipsMin.setBorder(new EmptyBorder(4, 2, 8, 2));
+        formCard.add(tipsMin, c);
+        decorateAsCard(formCard);
 
-        // ===== Botones al pie (estilo Agregar/Cancelar) =====
+        // ===== Botones (pie) =====
         JPanel footer = new JPanel(new GridBagLayout());
         footer.setOpaque(false);
-        footer.setBorder(new EmptyBorder(12, 12, 12, 12));
-        root.add(footer, BorderLayout.SOUTH);
+        footer.setBorder(new EmptyBorder(0, 0, 0, 0));
+        center.add(footer, BorderLayout.SOUTH);
 
         GridBagConstraints f = new GridBagConstraints();
         f.gridx = 0; f.gridy = 0; f.weightx = 1; f.insets = new Insets(0, 6, 0, 6);
@@ -143,14 +243,48 @@ public class CambiarContrasenaDialog extends JDialog {
             footer.add(btnCancelar, f);
         }
 
-        // Acciones
+        // Acciones (misma lógica)
         btnGuardar.addActionListener(e -> onGuardar());
         if (!forzado) btnCancelar.addActionListener(e -> dispose());
 
         // Igualar tamaños
         equalizeButtons(btnGuardar, btnCancelar);
 
+        // Listeners visuales (no afectan lógica)
+        KeyAdapter capsListener = new KeyAdapter() {
+            @Override public void keyPressed(KeyEvent e) { checkCaps(e); }
+            @Override public void keyReleased(KeyEvent e) { checkCaps(e); }
+        };
+        txtActual.addKeyListener(capsListener);
+        txtNueva.addKeyListener(capsListener);
+        txtRepetir.addKeyListener(capsListener);
+
+        txtNueva.getDocument().addDocumentListener(new SimpleDocListener(() -> actualizarFortaleza()));
+        decorateAsCard(footer);
         return root;
+
+    }
+
+    private void checkCaps(KeyEvent e) {
+        boolean caps = Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK);
+        if (lblCaps != null) lblCaps.setVisible(caps);
+    }
+
+    private void actualizarFortaleza() {
+        String s = new String(txtNueva.getPassword());
+        int score = 0;
+        if (s.length() >= 8) score++;
+        if (s.matches(".*[A-Z].*") && s.matches(".*[a-z].*")) score++;
+        if (s.matches(".*\\d.*")) score++;
+        if (s.matches(".*[^A-Za-z0-9].*") || s.length() >= 12) score++;
+        barFortaleza.setValue(score);
+        String txt = switch (score) {
+            case 0,1 -> "Fortaleza: débil";
+            case 2   -> "Fortaleza: media";
+            case 3   -> "Fortaleza: buena";
+            default  -> "Fortaleza: fuerte";
+        };
+        lblFortaleza.setText(txt);
     }
 
     private JLabel label(String text) {
@@ -172,7 +306,7 @@ public class CambiarContrasenaDialog extends JDialog {
         primary.setPreferredSize(ref);
     }
 
-    // ================ Lógica Guardar =================
+    // ================ Lógica Guardar (SIN CAMBIOS) =================
     private void onGuardar() {
         String actual  = new String(txtActual.getPassword());
         String nueva   = new String(txtNueva.getPassword());
@@ -221,7 +355,7 @@ public class CambiarContrasenaDialog extends JDialog {
             return;
         }
 
-        // Guardar nueva: PBKDF2 y limpiar columna legada
+        // Guardar nueva
         String nuevoHash = Passwords.hash(nueva.toCharArray());
         final String sqlUpd = "UPDATE Usuarios SET password_hash=?, `contraseña`=NULL WHERE id=?";
         try (Connection con = DB.get(); PreparedStatement ps = con.prepareStatement(sqlUpd)) {
@@ -240,7 +374,7 @@ public class CambiarContrasenaDialog extends JDialog {
         }
     }
 
-    // =========== Utilidades de verificación ===========
+    // =========== Utilidades de verificación (SIN CAMBIOS) ===========
     private boolean comprobarPassword(String plain, String hash, String planoLegado) {
         if (hash != null && !hash.isBlank()) {
             if (hash.startsWith("pbkdf2$")) {
@@ -257,7 +391,7 @@ public class CambiarContrasenaDialog extends JDialog {
                     return false;
                 } catch (Exception e) { return false; }
             }
-            return plain.equals(hash); // fallback (no debería)
+            return plain.equals(hash);
         }
         return planoLegado != null && plain.equals(planoLegado);
     }
@@ -280,13 +414,11 @@ public class CambiarContrasenaDialog extends JDialog {
     }
 
     private JCheckBox crearChkMostrar(JPasswordField target) {
-        // guarda el echoChar actual para restaurarlo
         final char[] defEcho = { target.getEchoChar() };
         if (defEcho[0] == 0) {
             Object o = UIManager.get("PasswordField.echoChar");
             defEcho[0] = (o instanceof Character) ? (Character) o : '\u2022';
         }
-
         JCheckBox chk = new JCheckBox("Mostrar");
         chk.setOpaque(false);
         chk.setForeground(TEXT_PRIMARY);
@@ -310,7 +442,7 @@ public class CambiarContrasenaDialog extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    // ================= Clases de estilo =================
+    // ===== Clases de estilo =====
     static class ModernButtonUI extends BasicButtonUI {
         private final Color bg, hover, press, fg; private final int arc; private final boolean filled;
         ModernButtonUI(Color bg, Color hover, Color press, Color fg, int arc, boolean filled) {
@@ -359,6 +491,31 @@ public class CambiarContrasenaDialog extends JDialog {
         }
     }
 
+    // Gradiente para header
+    static class GradientPanel extends JPanel {
+        private final Color top, bot;
+        GradientPanel(Color top, Color bot) { this.top = top; this.bot = bot; setOpaque(true); }
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            int h = getHeight();
+            GradientPaint gp = new GradientPaint(0, 0, top, 0, h, bot);
+            g2.setPaint(gp);
+            g2.fillRect(0, 0, getWidth(), h);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    // Document listener simple para actualizar barra
+    static class SimpleDocListener implements javax.swing.event.DocumentListener {
+        private final Runnable r;
+        SimpleDocListener(Runnable r){ this.r = r; }
+        @Override public void insertUpdate(javax.swing.event.DocumentEvent e){ r.run(); }
+        @Override public void removeUpdate(javax.swing.event.DocumentEvent e){ r.run(); }
+        @Override public void changedUpdate(javax.swing.event.DocumentEvent e){ r.run(); }
+    }
+
     private void setUIFont(Font f) {
         try {
             var keys = UIManager.getDefaults().keys();
@@ -369,6 +526,11 @@ public class CambiarContrasenaDialog extends JDialog {
             }
         } catch (Exception ignored) {}
     }
-
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
     private void alert(String msg) { JOptionPane.showMessageDialog(this, msg); }
 }
