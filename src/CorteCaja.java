@@ -540,16 +540,23 @@ public class CorteCaja {
     // Solo estos usuarios pueden realizar cobros de ese servicio
     private static final String CONTADORES_IN = "(1,2,5)";
 
-    /** Suma el 60% de los cobros del rango [t0, t1) hechos por usuarios con rol CONTADOR.
-     *  En tu base: roles de contadores son id 1, 4 y 5. Además, por seguridad, también
-     *  considera nombres que contengan 'contador' (ej. 'Asesor/Contador').
+    /**
+     * Suma el 60% EXCLUSIVAMENTE de los importes de los servicios de la categoría
+     * 'Contabilidad' (o del servicio llamado exactamente 'Servicios Contables 1')
+     * cobrados y pagados en el rango [t0, t1) por usuarios con rol 1,4 o 5.
+     *
+     * Se calcula sobre el DETALLE (cobro_detalle.cantidad * precio_unit) para
+     * no contar extras u otros servicios que estén en el mismo cobro.
      */
     private double calcularHonorariosContadores(java.sql.Timestamp t0, java.sql.Timestamp t1) {
         final String qHonor = """
-        SELECT COALESCE(SUM(c.total * 0.60), 0) AS total
+        SELECT COALESCE(SUM(d.cantidad * d.precio_unit) * 0.60, 0) AS total
         FROM cobros c
-        JOIN Usuarios u ON u.id = c.usuario_id
-        LEFT JOIN roles   r ON r.id = u.rol_id
+        JOIN Usuarios u                  ON u.id = c.usuario_id
+        LEFT JOIN roles r                ON r.id = u.rol_id
+        JOIN cobro_detalle d             ON d.cobro_id = c.id
+        LEFT JOIN servicios s            ON s.id = d.servicio_id
+        LEFT JOIN categorias_servicio cs ON cs.id = s.categoria_id
         WHERE c.estado = 'pagado'
           AND c.sucursal_id = ?
           AND c.fecha >= ? AND c.fecha < ?
@@ -557,10 +564,15 @@ public class CorteCaja {
                 u.rol_id IN (1, 4, 5)
                 OR LOWER(r.nombre) LIKE '%contador%'
               )
+          AND (
+                LOWER(cs.nombre) = 'contabilidad'
+                OR LOWER(s.nombre) = 'servicios contables 1'
+              )
     """;
+
         try (java.sql.Connection con = DB.get();
              java.sql.PreparedStatement ps = con.prepareStatement(qHonor)) {
-            ps.setInt(1, sucursalId);        // usa tu variable de sucursal actual
+            ps.setInt(1, sucursalId);
             ps.setTimestamp(2, t0);
             ps.setTimestamp(3, t1);
             try (java.sql.ResultSet rs = ps.executeQuery()) {
@@ -572,7 +584,6 @@ public class CorteCaja {
                     "No se pudo calcular honorarios de contadores:\n" + e.getMessage());
         }
         return 0.0;
-
     }
     // ====== Persistencia del corte ======
     private boolean guardarCorteCajaEnBD() {
