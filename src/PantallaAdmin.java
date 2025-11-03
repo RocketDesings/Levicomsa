@@ -146,6 +146,15 @@ public class PantallaAdmin implements Refrescable {
         if (btnSalir != null) btnSalir.setFont(fText);
         // Acciones (sin tocar lógica)
         if (btnSalir != null) btnSalir.addActionListener(e -> new AlertaCerrarSesion(pantalla));
+        if (btnCobrar != null) {
+            btnCobrar.addActionListener(e -> {
+                if (sucursalId <= 0) {
+                    JOptionPane.showMessageDialog(pantalla, "No se detectó sucursal del usuario.");
+                    return;
+                }
+                EnviarCobro.mostrar(sucursalId, usuarioId);
+            });
+        }
         if (btnConsultarCliente != null) btnConsultarCliente.addActionListener(e -> abrirConsultarCliente());
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
         if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
@@ -174,15 +183,7 @@ public class PantallaAdmin implements Refrescable {
         cargarClientesDesdeBD();
 
         // Cobrar (habilita según sucursal)
-        if (btnCobrar != null) {
-            btnCobrar.addActionListener(e -> {
-                if (sucursalId <= 0) {
-                    JOptionPane.showMessageDialog(pantalla, "No se detectó sucursal del usuario.");
-                    return;
-                }
-                EnviarCobro.mostrar(sucursalId, usuarioId);
-            });
-        }
+
 
         autoActualizador = new AutoActualizarTabla(this::cargarClientesDesdeBD, 5000);
         autoActualizador.iniciar();

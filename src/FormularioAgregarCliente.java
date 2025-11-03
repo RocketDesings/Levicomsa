@@ -43,11 +43,11 @@ public class FormularioAgregarCliente extends JFrame {
     public FormularioAgregarCliente(Refrescable pantallaPrincipal, int usuarioId) {
         this.pantallaPrincipal = pantallaPrincipal;
         this.usuarioId = usuarioId;
-        JFrame loginFrame = new JFrame("Login");
-        loginFrame.setUndecorated(false);
-        loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        loginFrame.setTitle("Agregar Cliente");
-        loginFrame.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        JFrame frame = new JFrame("Login");
+        frame.setUndecorated(false);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setTitle("Agregar Cliente");
+        frame.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         // Fuente global consistente
         try { setUIFont(new Font("Segoe UI", Font.PLAIN, 13)); } catch (Exception ignored) {}
@@ -56,20 +56,19 @@ public class FormularioAgregarCliente extends JFrame {
         GradientPanel root = new GradientPanel(BG_TOP, BG_BOT);
         root.setLayout(new GridBagLayout());
 
-        // “Card” (mismo acabado que Login)
         // Tarjeta con sombra y esquinas redondeadas que envuelve tu mainPanel
-        loginFrame.addComponentListener(new java.awt.event.ComponentAdapter() {
+        frame.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override public void componentResized(java.awt.event.ComponentEvent e) {
-                loginFrame.setShape(new java.awt.geom.RoundRectangle2D.Double(
-                        0, 0, loginFrame.getWidth(), loginFrame.getHeight(), 24, 24
+                frame.setShape(new java.awt.geom.RoundRectangle2D.Double(
+                        0, 0, frame.getWidth(), frame.getHeight(), 24, 24
                 ));
             }
         });
         JLayer<JComponent> roundedLayer = new JLayer<>(mainPanel, new Login.RoundedClipUI(10)); // 20 = radio de esquina
-        loginFrame.setContentPane(roundedLayer);
-        loginFrame.pack();
-        loginFrame.setLocationRelativeTo(null);
-        loginFrame.setVisible(true);
+        frame.setContentPane(roundedLayer);
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
 
         // ===== Tipografía básica =====
         Font fText = new Font("Segoe UI", Font.PLAIN, 16);

@@ -1,9 +1,11 @@
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import javax.swing.RowFilter;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.Connection;
@@ -18,18 +20,36 @@ public class SeleccionarCliente implements Refrescable {
     private final BiConsumer<Integer, String> onPick;      // devuelve (clienteId, nombre)
 
     // UI (del .form)
-    private JPanel panel1;
+    private JPanel panelMain;
     private JTable tblClientes;
     private JButton btnCancelar;
-
+    private JPanel panelContenedor;
+    private JLabel lblTitulo;
+    private JPanel panelBusqueda;
+    private JPanel panelTabla;
+    private JScrollPane scrTabla;
+    private JLabel lblBusqueda;
     // Búsqueda global (si existe en tu .form, se usará)
     private JTextField txtBuscar;     // <— crea este campo en el .form
     private JButton buscarButton;     // (opcional)
-
     private JFrame frame;
     private DefaultTableModel modelo;
     private TableRowSorter<DefaultTableModel> sorter;
-
+    //COLORES
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
     // Índices en el MODELO
     private static final int COL_ID         = 0;
     private static final int COL_NOMBRE     = 1;
@@ -48,7 +68,7 @@ public class SeleccionarCliente implements Refrescable {
 
         frame = new JFrame("Seleccionar Cliente");
         frame.setUndecorated(true);
-        frame.setContentPane(panel1);
+        frame.setContentPane(panelMain);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         configurarTabla();
@@ -59,6 +79,11 @@ public class SeleccionarCliente implements Refrescable {
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+
+        decorateAsCard(panelMain);
+        decorateAsCard(panelContenedor);
+        decorateAsCard(panelTabla);
+        styleExitButton(btnCancelar);
     }
 
     private void configurarTabla() {
@@ -98,7 +123,7 @@ public class SeleccionarCliente implements Refrescable {
 
         // Cancelar y ESC cierran
         btnCancelar.addActionListener(e -> frame.dispose());
-        panel1.registerKeyboardAction(
+        panelMain.registerKeyboardAction(
                 e -> frame.dispose(),
                 KeyStroke.getKeyStroke("ESCAPE"),
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
@@ -194,6 +219,22 @@ public class SeleccionarCliente implements Refrescable {
         }
     }
 
+    private void styleExitButton(JButton b) {
+        // Botón rojo consistente con tu estilo
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
     @Override
     public void refrescarDatos() {
         cargarClientesDesdeBD();

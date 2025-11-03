@@ -27,15 +27,21 @@ public class ConsultarCliente {
 
     // ====== formato/tema ======
     private static final DateTimeFormatter DF = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final Color BG_CANVAS    = new Color(0xF3F4F6);
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
     private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
-    private static final Color BG_CANVAS    = new Color(0xF3F4F6);
-    private static final Color CARD_BG      = Color.WHITE;
     private static final Color TEXT_PRIMARY = new Color(0x111827);
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
-    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
-    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
 
     // ====== API ======
     public static void mostrar(Window owner, int clienteId, String nombreCliente) {
@@ -80,7 +86,7 @@ public class ConsultarCliente {
         if (panelTabla != null) decorateAsCard(panelTabla);
         if (panelInfo  != null) decorateAsCard(panelInfo);
         if (panelBotones != null) decorateAsCard(panelBotones);
-
+        if (panelMain != null) decorateAsCard(panelMain);
         if (scrTabla != null) {
             scrTabla.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
             scrTabla.getViewport().setBackground(CARD_BG);
@@ -89,12 +95,10 @@ public class ConsultarCliente {
         stylePrimaryButton(btnSalir, new Color(0xDC2626)); // rojo salir
     }
     private void decorateAsCard(JComponent c) {
+        if (c == null) return;
         c.setOpaque(true);
         c.setBackground(CARD_BG);
-        c.setBorder(BorderFactory.createCompoundBorder(
-                new MatteBorder(1,1,1,1, BORDER_SOFT),
-                new EmptyBorder(10,10,10,10)
-        ));
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
     private void stylePrimaryButton(JButton b, Color base) {
         if (b == null) return;

@@ -141,7 +141,7 @@ public class InterfazCajero implements Refrescable {
         if (btnConsultarCliente != null) btnConsultarCliente.addActionListener(e ->abrirConsultarCliente());
         if (btnCorte != null) btnCorte.addActionListener(e -> CorteCaja.mostrar(pantalla, sucursalId, usuarioId));
         if (btnAgregarCliente != null) btnAgregarCliente.addActionListener(e -> abrirFormularioAgregarCliente());
-
+        if (btnModificarCliente != null) btnModificarCliente.addActionListener(e -> abrirSeleccionModificar());
         // Botones de movimientos de caja
         if (btnEntrada != null) btnEntrada.addActionListener(e -> abrirRegistrarEntrada());
         if (btnSalida  != null) btnSalida.addActionListener(e -> abrirRegistrarSalida());
@@ -604,7 +604,23 @@ public class InterfazCajero implements Refrescable {
             JOptionPane.showMessageDialog(pantalla, "No se pudo abrir el formulario: " + ex.getMessage());
         }
     }
-
+    private void abrirSeleccionModificar() {
+        try {
+            Class<?> cls = Class.forName("SeleccionarCliente2");
+            try {
+                var ctor = cls.getDeclaredConstructor(Refrescable.class, int.class);
+                ctor.setAccessible(true);
+                ctor.newInstance(this, usuarioId);
+            } catch (NoSuchMethodException noPair) {
+                var ctor2 = cls.getDeclaredConstructor();
+                ctor2.setAccessible(true);
+                ctor2.newInstance();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(pantalla, "No se pudo abrir la selección: " + ex.getMessage());
+        }
+    }
     // Abre la ventana de historial para el cliente seleccionado en la tabla
     private void abrirConsultarCliente() {
         int viewRow = tblAsesor.getSelectedRow();

@@ -31,6 +31,7 @@ public class EnviarCobro {
     private JPanel panelCliente;
     private JButton btnSeleccionarCliente;
     private JTextField txtCliente;
+    private JPanel panelContenedor;
 
     // ====== contexto ======
     private final int sucursalId;
@@ -40,16 +41,20 @@ public class EnviarCobro {
     private JFrame frame;
 
     // ===== Paleta / tema =====
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
     private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
-    private static final Color BG_TOP       = new Color(0x052E16);
-    private static final Color BG_BOT       = new Color(0x064E3B);
-    private static final Color CARD_BG      = Color.WHITE;
     private static final Color TEXT_PRIMARY = new Color(0x111827);
-    private static final Color TEXT_MUTED   = new Color(0x6B7280);
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
     private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
 
     // ===== helpers DTO =====
     static class IdNombre {
@@ -117,6 +122,7 @@ public class EnviarCobro {
         decorateAsCard(panelExtra);
         decorateAsCard(panelInfo);
         decorateAsCard(panelBotones);
+        decorateAsCard(panelMain);
 
         // Estilos de controles
         if (txtCliente != null) {
@@ -451,13 +457,6 @@ public class EnviarCobro {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    private void decorateAsCard(JComponent c) {
-        if (c == null) return;
-        c.setOpaque(true);
-        c.setBackground(CARD_BG);
-        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
-    }
-
     private void setPlaceholderIfEmpty(JTextField tf, String ph) {
         if (tf == null || ph == null) return;
         if (tf.getText() == null || tf.getText().isBlank()) {
@@ -626,5 +625,21 @@ public class EnviarCobro {
                 if (v instanceof Font) UIManager.put(k, f);
             }
         } catch (Exception ignored) {}
+    }
+    private void styleExitButton(JButton b) {
+        // Botón rojo consistente con tu estilo
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 }
