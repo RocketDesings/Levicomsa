@@ -212,7 +212,7 @@ public class RegistrarSalida {
                 ps.setInt(1, sucursalId);
                 ps.setInt(2, usuarioId);
                 ps.setBigDecimal(3, monto);
-                ps.setString(4, motivo);
+                ps.setString(4, "Salida: "+motivo);
                 ps.executeUpdate();
             }
 

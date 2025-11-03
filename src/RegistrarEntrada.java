@@ -219,7 +219,7 @@ public class RegistrarEntrada {
                 ps.setInt(1, sucursalId);
                 ps.setInt(2, usuarioId);
                 ps.setBigDecimal(3, monto);
-                ps.setString(4, descripcion);
+                ps.setString(4, "Entrada: "+descripcion);
                 ps.executeUpdate();
             }
 

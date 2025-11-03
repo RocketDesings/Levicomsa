@@ -216,47 +216,99 @@ public class CorteCaja {
         Timestamp t1 = endOf(f);
 
         final String sql = """
-        SELECT concepto, descripcion, monto, metodo, fecha
-        FROM (
-            /* Cobros pagados del día */
-            SELECT 
-                CONCAT('COBRO ', 
-                       CASE WHEN COALESCE(NULLIF(c.notas,''), '') <> '' 
-                            THEN c.notas ELSE CONCAT('#',c.id) END)                       AS concepto,
-                COALESCE(c.notas,'')                                                      AS descripcion,
-                c.total                                                                   AS monto,
-                COALESCE(mp.nombre,'')                                                    AS metodo,
-                c.fecha                                                                   AS fecha
-            FROM cobros c
-            LEFT JOIN metodos_pago mp ON mp.id = c.metodo_pago_id
-            WHERE c.estado='pagado'
-              AND c.sucursal_id = ?
-              AND c.fecha >= ? AND c.fecha < ?
+SELECT concepto, descripcion, monto, metodo, fecha
+FROM (
+    /* === A) Servicios de los cobros (excluye extras) === */
+    SELECT 
+        CONCAT('COBRO ',
+               CASE WHEN COALESCE(NULLIF(c.notas,''), '') <> ''
+                    THEN c.notas ELSE CONCAT('#',c.id) END)                AS concepto,
+        COALESCE(c.notas,'')                                              AS descripcion,
+        (SELECT COALESCE(SUM(d.cantidad * d.precio_unit),0)
+           FROM cobro_detalle d
+           LEFT JOIN servicios s ON s.id = d.servicio_id
+           WHERE d.cobro_id = c.id AND COALESCE(s.categoria_id,0) <> 3)   AS monto,
+        COALESCE(mp.nombre,'')                                            AS metodo,
+        c.fecha                                                           AS fecha
+    FROM cobros c
+    LEFT JOIN metodos_pago mp ON mp.id = c.metodo_pago_id
+    WHERE c.estado='pagado'
+      AND c.sucursal_id = ?
+      AND c.fecha >= ? AND c.fecha < ?
 
-            UNION ALL
+    UNION ALL
 
-            /* Movimientos de caja del día (entradas/salidas) */
-            SELECT 
-                m.descripcion                                                             AS concepto,
-                CASE WHEN m.cobro_id IS NOT NULL THEN CONCAT('Ref cobro #', m.cobro_id) 
-                     ELSE '' END                                                          AS descripcion,
-                CASE WHEN m.tipo='SALIDA' THEN -m.monto ELSE m.monto END                  AS monto,
-                'Caja'                                                                    AS metodo,
-                m.fecha                                                                   AS fecha
-            FROM caja_movimientos m
-            WHERE m.sucursal_id = ?
-              AND m.fecha >= ? AND m.fecha < ?
-              AND m.cobro_id IS NULL   -- evita duplicar pagos ya listados en COBROS
-        ) t
-        ORDER BY fecha
-        """;
+    /* === B) Extras “pegados” a un cobro (desde detalle) === */
+    SELECT 
+        CONCAT('EXTRAS COBRO #', c.id)                                    AS concepto,
+        CASE WHEN COALESCE(NULLIF(c.notas,''), '') <> ''
+             THEN c.notas ELSE CONCAT('Ref cobro #', c.id) END            AS descripcion,
+        (SELECT COALESCE(SUM(d.cantidad * d.precio_unit),0)
+           FROM cobro_detalle d
+           LEFT JOIN servicios s ON s.id = d.servicio_id
+           WHERE d.cobro_id = c.id AND COALESCE(s.categoria_id,0) = 3)    AS monto,
+        COALESCE(mp.nombre,'')                                            AS metodo,
+        c.fecha                                                           AS fecha
+    FROM cobros c
+    LEFT JOIN metodos_pago mp ON mp.id = c.metodo_pago_id
+    WHERE c.estado='pagado'
+      AND c.sucursal_id = ?
+      AND c.fecha >= ? AND c.fecha < ?
+
+    UNION ALL
+
+    /* === C) “COBRO SOLO EXTRAS” (sin detalle) === */
+    SELECT 
+        'EXTRAS (SOLO COBRO)'                                             AS concepto,
+        COALESCE(c.notas, CONCAT('COBRO SOLO EXTRAS #', c.id))            AS descripcion,
+        c.total                                                           AS monto,
+        COALESCE(mp.nombre,'')                                            AS metodo,
+        c.fecha                                                           AS fecha
+    FROM cobros c
+    LEFT JOIN metodos_pago mp ON mp.id = c.metodo_pago_id
+    WHERE c.estado = 'pagado'
+      AND c.sucursal_id = ?
+      AND c.fecha >= ? AND c.fecha < ?
+      AND UPPER(COALESCE(c.notas,'')) LIKE 'COBRO SOLO EXTRAS%%'
+      AND NOT EXISTS (   /* evita doble conteo si además hubiera detalle */
+            SELECT 1
+              FROM cobro_detalle d
+              LEFT JOIN servicios s ON s.id = d.servicio_id
+             WHERE d.cobro_id = c.id AND COALESCE(s.categoria_id,0) = 3
+      )
+
+    UNION ALL
+
+    /* === D) Movimientos manuales de caja (entradas/salidas) === */
+    SELECT 
+        m.descripcion                                                     AS concepto,
+        CASE WHEN m.cobro_id IS NOT NULL THEN CONCAT('Ref cobro #', m.cobro_id)
+             ELSE '' END                                                  AS descripcion,
+        CASE WHEN m.tipo='SALIDA' THEN -m.monto ELSE m.monto END          AS monto,
+        'Caja'                                                            AS metodo,
+        m.fecha                                                           AS fecha
+    FROM caja_movimientos m
+    WHERE m.sucursal_id = ?
+      AND m.fecha >= ? AND m.fecha < ?
+      AND m.cobro_id IS NULL   -- NO duplicar pagos listados arriba
+) t
+WHERE monto <> 0
+ORDER BY fecha
+""";
+
+
 
         boolean hayFilas = false;
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setInt(1, sucursalId); ps.setTimestamp(2, t0); ps.setTimestamp(3, t1);
-            ps.setInt(4, sucursalId); ps.setTimestamp(5, t0); ps.setTimestamp(6, t1);
+            ps.setInt(1,  sucursalId); ps.setTimestamp(2,  t0); ps.setTimestamp(3,  t1);  // A
+            ps.setInt(4,  sucursalId); ps.setTimestamp(5,  t0); ps.setTimestamp(6,  t1);  // B
+            ps.setInt(7,  sucursalId); ps.setTimestamp(8,  t0); ps.setTimestamp(9,  t1);  // C
+            ps.setInt(10, sucursalId); ps.setTimestamp(11, t0); ps.setTimestamp(12, t1);  // D
+
+
+
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -295,14 +347,15 @@ public class CorteCaja {
 
         // -- Movimientos de caja
         final String qMovs = """
-        SELECT
-            COALESCE(SUM(CASE WHEN tipo='ENTRADA' AND descripcion LIKE 'INICIO TURNO CAJA%' THEN monto END), 0) AS fondo,
-            COALESCE(SUM(CASE WHEN tipo='SALIDA'  THEN monto END), 0)                                           AS salidas,
-            COALESCE(SUM(CASE WHEN tipo='ENTRADA' AND descripcion NOT LIKE 'INICIO TURNO CAJA%' THEN monto END), 0) AS entradas
-        FROM caja_movimientos
-        WHERE sucursal_id = ?
-          AND fecha >= ? AND fecha < ?
-        """;
+SELECT
+    COALESCE(SUM(CASE WHEN tipo='ENTRADA' AND descripcion LIKE 'INICIO TURNO CAJA%' THEN monto END), 0) AS fondo,
+    COALESCE(SUM(CASE WHEN tipo='SALIDA'  THEN monto END), 0)                                           AS salidas,
+    COALESCE(SUM(CASE WHEN tipo='ENTRADA' AND descripcion NOT LIKE 'INICIO TURNO CAJA%' AND cobro_id IS NULL THEN monto END), 0) AS entradas
+FROM caja_movimientos
+WHERE sucursal_id = ?
+  AND fecha >= ? AND fecha < ?
+""";
+
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(qMovs)) {
             ps.setInt(1, sucursalId);
@@ -320,24 +373,53 @@ public class CorteCaja {
             ex.printStackTrace();
         }
 
+
         // -- Cobros pagados: separar por método y servicios vs extras
         final String qCobros = """
-            SELECT 
-                COALESCE(SUM(CASE WHEN metodo_pago_id = 1 THEN total END), 0) AS efec,
-                COALESCE(SUM(CASE WHEN metodo_pago_id = 3 THEN total END), 0) AS transf,
-                COALESCE(SUM(CASE WHEN cliente_id IS NOT NULL THEN total END), 0) AS servicios,
-                COALESCE(SUM(CASE WHEN cliente_id IS NULL  THEN total END), 0) AS extras
-            FROM cobros
-            WHERE estado='pagado'
-              AND sucursal_id = ?
-              AND fecha >= ? AND fecha < ?
-        """;
+    SELECT 
+        /* Totales por método de pago (sobre c.total) */
+        (SELECT COALESCE(SUM(CASE WHEN c.metodo_pago_id = 1 THEN c.total END), 0)
+           FROM cobros c
+           WHERE c.estado='pagado' AND c.sucursal_id=? AND c.fecha >= ? AND c.fecha < ?) AS efec,
+        (SELECT COALESCE(SUM(CASE WHEN c.metodo_pago_id = 3 THEN c.total END), 0)
+           FROM cobros c
+           WHERE c.estado='pagado' AND c.sucursal_id=? AND c.fecha >= ? AND c.fecha < ?) AS transf,
+
+        /* Servicios (detalle: categoria_id <> 3) */
+        (SELECT COALESCE(SUM(CASE WHEN COALESCE(s.categoria_id,0) <> 3 THEN d.cantidad * d.precio_unit END), 0)
+           FROM cobros c
+           JOIN cobro_detalle d ON d.cobro_id = c.id
+           LEFT JOIN servicios s ON s.id = d.servicio_id
+           WHERE c.estado='pagado' AND c.sucursal_id=? AND c.fecha >= ? AND c.fecha < ?) AS servicios,
+
+        /* Extras = (detalle categoria_id = 3) + (COBRO SOLO EXTRAS sin detalle) */
+        (
+           (SELECT COALESCE(SUM(CASE WHEN COALESCE(s.categoria_id,0) = 3 THEN d.cantidad * d.precio_unit END), 0)
+              FROM cobros c
+              JOIN cobro_detalle d ON d.cobro_id = c.id
+              LEFT JOIN servicios s ON s.id = d.servicio_id
+              WHERE c.estado='pagado' AND c.sucursal_id=? AND c.fecha >= ? AND c.fecha < ?)
+           +
+           (SELECT COALESCE(SUM(c.total),0)
+              FROM cobros c
+              WHERE c.estado='pagado' AND c.sucursal_id=? AND c.fecha >= ? AND c.fecha < ?
+                AND UPPER(COALESCE(c.notas,'')) LIKE 'COBRO SOLO EXTRAS%%'
+                AND NOT EXISTS (
+                    SELECT 1 FROM cobro_detalle d
+                    LEFT JOIN servicios s ON s.id = d.servicio_id
+                    WHERE d.cobro_id = c.id AND COALESCE(s.categoria_id,0) = 3
+                ))
+        ) AS extras
+""";
+
         double extrasTotal = 0.0;
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(qCobros)) {
-            ps.setInt(1, sucursalId);
-            ps.setTimestamp(2, t0);
-            ps.setTimestamp(3, t1);
+            ps.setInt(1, sucursalId);  ps.setTimestamp(2, t0);  ps.setTimestamp(3, t1);   // efec
+            ps.setInt(4, sucursalId);  ps.setTimestamp(5, t0);  ps.setTimestamp(6, t1);   // transf
+            ps.setInt(7, sucursalId);  ps.setTimestamp(8, t0);  ps.setTimestamp(9, t1);   // servicios
+            ps.setInt(10, sucursalId); ps.setTimestamp(11, t0); ps.setTimestamp(12, t1);  // extras: detalle
+            ps.setInt(13, sucursalId); ps.setTimestamp(14, t0); ps.setTimestamp(15, t1);  // extras: solo extras
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     ventasEfe    = rs.getDouble("efec");
@@ -350,6 +432,7 @@ public class CorteCaja {
             JOptionPane.showMessageDialog(dialog, "Error en cobros:\n" + ex.getMessage());
             ex.printStackTrace();
         }
+
 
         // lblIngresosEfectivo = cobros en efectivo + movimientos ENTRADA
         double ingresosEfectivoLbl = ventasEfe + entradasCaja;
