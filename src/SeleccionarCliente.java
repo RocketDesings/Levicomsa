@@ -1,11 +1,13 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
+import javax.swing.table.*;
 import javax.swing.RowFilter;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.Connection;
@@ -28,7 +30,7 @@ public class SeleccionarCliente implements Refrescable {
     private JPanel panelBusqueda;
     private JPanel panelTabla;
     private JScrollPane scrTabla;
-    private JLabel lblBusqueda;
+    private JLabel lblBuscar;
     // Búsqueda global (si existe en tu .form, se usará)
     private JTextField txtBuscar;     // <— crea este campo en el .form
     private JButton buscarButton;     // (opcional)
@@ -80,6 +82,9 @@ public class SeleccionarCliente implements Refrescable {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
+        if (txtBuscar != null) {
+            styleSearchField(txtBuscar);
+        }
         decorateAsCard(panelMain);
         decorateAsCard(panelContenedor);
         decorateAsCard(panelTabla);
@@ -100,7 +105,17 @@ public class SeleccionarCliente implements Refrescable {
         if (tblClientes.getColumnModel().getColumnCount() > 0) {
             tblClientes.removeColumn(tblClientes.getColumnModel().getColumn(0)); // oculta ID
         }
-
+        JTableHeader h = tblClientes.getTableHeader();
+        h.setDefaultRenderer(new SeleccionarCliente.HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
+        h.setPreferredSize(new Dimension(h.getPreferredSize().width, 32));
+        // Zebra + tooltip con texto completo
+        tblClientes.setDefaultRenderer(Object.class, new SeleccionarCliente.ZebraRenderer() {
+            @Override public Component getTableCellRendererComponent(JTable t,Object v,boolean sel,boolean foc,int r,int c){
+                Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+                if (comp instanceof JComponent jc) jc.setToolTipText(v == null ? "" : v.toString());
+                return comp;
+            }
+        });
         tblClientes.setRowHeight(26);
         tblClientes.getTableHeader().setReorderingAllowed(false);
         tblClientes.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
@@ -234,6 +249,98 @@ public class SeleccionarCliente implements Refrescable {
         c.setOpaque(true);
         c.setBackground(CARD_BG);
         c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+    private void styleSearchField(JTextField tf) {
+        if (tf == null) return;
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+
+        Insets pad = new Insets(10, 38, 10, 12); // espacio a la izquierda para el ícono
+        tf.setBorder(new SeleccionarCliente2.SearchCompoundBorder(BORDER_SOFT, 18, 1, pad));
+
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new SeleccionarCliente2.SearchCompoundBorder(BORDER_FOCUS, 18, 2, pad));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new SeleccionarCliente2.SearchCompoundBorder(BORDER_SOFT, 18, 1, pad));
+            }
+        });
+    }
+    private void setPlaceholderIfEmpty(JTextField tf, String ph) {
+        if (tf == null || ph == null) return;
+        if (tf.getText() == null || tf.getText().isBlank()) {
+            tf.setForeground(TEXT_MUTED);
+            tf.setText(ph);
+        }
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                if (tf.getText().equals(ph)) { tf.setText(""); tf.setForeground(TEXT_PRIMARY); }
+            }
+            @Override public void focusLost(FocusEvent e) {
+                if (tf.getText().isBlank()) { tf.setForeground(TEXT_MUTED); tf.setText(ph); }
+            }
+        });
+    }
+    // ---------------- Búsqueda ----------------
+    private void cablearBusquedaInline() {
+        if (txtBuscar == null) return;
+
+        txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e)  { aplicarFiltro(txtBuscar.getText().trim()); }
+            public void removeUpdate(DocumentEvent e)  { aplicarFiltro(txtBuscar.getText().trim()); }
+            public void changedUpdate(DocumentEvent e) { aplicarFiltro(txtBuscar.getText().trim()); }
+        });
+
+        txtBuscar.addActionListener(e -> aplicarFiltro(txtBuscar.getText().trim()));
+
+        // ESC para limpiar
+        txtBuscar.getInputMap(JComponent.WHEN_FOCUSED)
+                .put(KeyStroke.getKeyStroke("ESCAPE"), "clear");
+        txtBuscar.getActionMap().put("clear", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) {
+                txtBuscar.setText("");
+                aplicarFiltro("");
+            }
+        });
+    }
+    private void aplicarFiltro(String q) {
+        if (sorter == null) return;
+        if (q == null || q.isBlank()) {
+            sorter.setRowFilter(null);
+            return;
+        }
+        String regex = "(?i)" + java.util.regex.Pattern.quote(q);
+        List<RowFilter<Object,Object>> cols = new ArrayList<>();
+        for (int c = 0; c < modelo.getColumnCount(); c++) {
+            cols.add(RowFilter.regexFilter(regex, c));
+        }
+        sorter.setRowFilter(RowFilter.orFilter(cols));
+    }
+    // ==================== RENDERERS / ESTILO ====================
+    private static class HeaderRenderer extends DefaultTableCellRenderer {
+        private final TableCellRenderer base; private final Color bg, fg;
+        HeaderRenderer(TableCellRenderer base, Color bg, Color fg){ this.base=base; this.bg=bg; this.fg=fg; }
+        @Override public Component getTableCellRendererComponent(JTable t,Object v,boolean s,boolean f,int r,int c){
+            Component comp = base.getTableCellRendererComponent(t, v, s, f, r, c);
+            comp.setBackground(bg); comp.setForeground(fg);
+            comp.setFont(comp.getFont().deriveFont(Font.BOLD));
+            if (comp instanceof JComponent jc) jc.setBorder(new MatteBorder(0,0,1,0,bg.darker()));
+            return comp;
+        }
+    }
+    private class ZebraRenderer extends DefaultTableCellRenderer {
+        @Override public Component getTableCellRendererComponent(JTable t,Object v,boolean sel,boolean foc,int r,int c){
+            Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+            if (sel) { comp.setBackground(TABLE_SEL_BG); comp.setForeground(TEXT_PRIMARY); }
+            else     { comp.setBackground((r%2==0)?Color.WHITE:TABLE_ALT); comp.setForeground(TEXT_PRIMARY); }
+            setBorder(new EmptyBorder(6,8,6,8));
+            setHorizontalAlignment(SwingConstants.LEFT);
+            return comp;
+        }
     }
     @Override
     public void refrescarDatos() {

@@ -1,58 +1,68 @@
 import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class ModificarCliente {
     private final Refrescable refrescable;
     private final int usuarioId;
-    private final String rfcOriginal; // Identifica al cliente a actualizar
+    private final String rfcOriginal;
 
-    // UI (del .form)
-    private JPanel panel1;
+    // UI (.form)
+    private JPanel panelContenedor;
     private JTextField txtNombre;
     private JTextField txtTelefono;
     private JTextField txtCurp;
     private JTextField txtRFC;
     private JTextField txtCorreo;
-    private JLabel lblIcono;
     private JButton btnConfirmar;
     private JButton btnCancelar;
     private JComboBox<String> cmbPensionado;
     private JTextField txtNSS;
+    private JPanel panelMain;
+    private JPanel panelDatos;
+    private JPanel panelLabels;
+    private JPanel panelBotones;
 
     private JFrame frame;
 
-    // ===== Constructor recomendado (incluye NSS) =====
+    // ======= PALETA & FUENTES (según indicaciones) =======
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+
+    // ===== Constructores =====
     public ModificarCliente(Refrescable refrescable,
-                            String nombre,
-                            String telefono,
-                            String curp,
-                            String rfc,
-                            String correo,
-                            String pensionado,
-                            String nss,
-                            int usuarioId) {
+                            String nombre, String telefono, String curp, String rfc,
+                            String correo, String pensionado, String nss, int usuarioId) {
         this.refrescable = refrescable;
         this.usuarioId   = usuarioId;
         this.rfcOriginal = rfc;
 
         construirVentana();
+        aplicarEstilo(); // <-- SOLO ESTILO
 
-        if (cmbPensionado.getItemCount() == 0) {
-            cmbPensionado.addItem("Sí");
-            cmbPensionado.addItem("No");
-        }
+        if (cmbPensionado.getItemCount() == 0) { cmbPensionado.addItem("Sí"); cmbPensionado.addItem("No"); }
 
-        // Carga de datos
+        // Datos
         txtNombre.setText(nullSafe(nombre));
         txtTelefono.setText(nullSafe(telefono));
         txtCurp.setText(nullSafe(curp));
         txtRFC.setText(nullSafe(rfc));
         txtCorreo.setText(nullSafe(correo));
-        txtNSS.setText(nullSafe(nss)); // ← NSS
+        txtNSS.setText(nullSafe(nss));
         cmbPensionado.setSelectedItem(pensionado != null ? pensionado : "No");
 
         instalarAtajosYAcciones();
@@ -62,25 +72,16 @@ public class ModificarCliente {
         frame.setVisible(true);
     }
 
-    // ===== Constructor legacy (sin NSS): lo lee de la BD por RFC) =====
     public ModificarCliente(Refrescable refrescable,
-                            String nombre,
-                            String telefono,
-                            String curp,
-                            String rfc,
-                            String correo,
-                            String pensionado,
-                            int usuarioId) {
-        this(refrescable,
-                nombre, telefono, curp, rfc, correo, pensionado,
-                leerNSSporRFC(rfc),        // ← obtiene NSS desde BD
-                usuarioId);
+                            String nombre, String telefono, String curp, String rfc,
+                            String correo, String pensionado, int usuarioId) {
+        this(refrescable, nombre, telefono, curp, rfc, correo, pensionado, leerNSSporRFC(rfc), usuarioId);
     }
 
     private void construirVentana() {
         frame = new JFrame("Modificar cliente");
         frame.setUndecorated(true);
-        frame.setContentPane(panel1);
+        frame.setContentPane(panelContenedor);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     }
 
@@ -88,15 +89,107 @@ public class ModificarCliente {
         btnConfirmar.addActionListener(e -> confirmar());
         btnCancelar.addActionListener(e -> frame.dispose());
 
-        // ENTER confirma, ESC cierra
-        panel1.registerKeyboardAction(e -> confirmar(),
+        panelContenedor.registerKeyboardAction(e -> confirmar(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        panel1.registerKeyboardAction(e -> frame.dispose(),
+        panelContenedor.registerKeyboardAction(e -> frame.dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
+    // ==================== ESTILO (solo UI) ====================
+    private void aplicarEstilo() {
+        // Fondo general (suave)
+        if (panelContenedor != null) panelContenedor.setBackground(new Color(0xF3F4F6));
+
+        // Tarjetas
+        decorateAsCard(panelMain);
+        decorateAsCard(panelDatos);
+        decorateAsCard(panelLabels);
+        decorateAsCard(panelBotones);
+        decorateAsCard(panelContenedor);
+
+        // Tipografías básicas
+        setFontIfNotNull(txtNombre, fText);
+        setFontIfNotNull(txtTelefono, fText);
+        setFontIfNotNull(txtCurp, fText);
+        setFontIfNotNull(txtRFC, fText);
+        setFontIfNotNull(txtCorreo, fText);
+        setFontIfNotNull(txtNSS, fText);
+        setFontIfNotNull(cmbPensionado, fText);
+
+        // Campos
+        styleTextField(txtNombre);
+        styleTextField(txtTelefono);
+        styleTextField(txtCurp);
+        styleTextField(txtRFC);
+        styleTextField(txtCorreo);
+        styleTextField(txtNSS);
+        styleCombo(cmbPensionado);
+
+        // Botones
+        stylePrimaryButton(btnConfirmar);
+        styleExitButton(btnCancelar);
+    }
+
+    private void setFontIfNotNull(JComponent c, Font f) { if (c != null) c.setFont(f); }
+
+    private void styleTextField(JTextField tf) {
+        if (tf == null) return;
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorder(new LineBorder(BORDER_SOFT, 1, true),
+                new EmptyBorder(10, 12, 10, 12)));
+        tf.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent e) {
+                tf.setBorder(new CompoundBorder(new LineBorder(BORDER_FOCUS, 2, true),
+                        new EmptyBorder(10, 12, 10, 12)));
+            }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                tf.setBorder(new CompoundBorder(new LineBorder(BORDER_SOFT, 1, true),
+                        new EmptyBorder(10, 12, 10, 12)));
+            }
+        });
+    }
+
+    private void styleCombo(JComboBox<?> cb) {
+        if (cb == null) return;
+        cb.setBackground(Color.WHITE);
+        cb.setForeground(TEXT_PRIMARY);
+        cb.setBorder(new MatteBorder(1,1,1,1,BORDER_SOFT));
+        cb.setFont(fText);
+        //if (cb.getItemCount() > 0) cb.setPrototypeDisplayValue(cb.getItemAt(0));
+    }
+
+    // Botón verde principal (usa ModernButtonUI de PantallaAdmin)
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    // Botón rojo (usa ModernButtonUI de Login)
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    // ==================== LÓGICA ORIGINAL (sin cambios) ====================
     private static String nullSafe(String s) { return s == null ? "" : s; }
 
     private static String leerNSSporRFC(String rfc) {
@@ -130,7 +223,6 @@ public class ModificarCliente {
         try (Connection con = DB.get()) {
             con.setAutoCommit(false);
 
-            // Para bitácora de clientes si tus triggers usan @app_user_id
             if (usuarioId > 0) {
                 try (PreparedStatement ps = con.prepareStatement("SET @app_user_id = ?")) {
                     ps.setInt(1, usuarioId);
@@ -145,7 +237,7 @@ public class ModificarCliente {
                 ps.setString(4, txtRFC.getText().trim());
                 ps.setString(5, txtCorreo.getText().trim());
                 ps.setBoolean(6, isSi(cmbPensionado.getSelectedItem()));
-                ps.setString(7, txtNSS.getText().trim());    // ← NSS
+                ps.setString(7, txtNSS.getText().trim());
                 ps.setString(8, rfcOriginal);
 
                 int upd = ps.executeUpdate();
@@ -174,7 +266,6 @@ public class ModificarCliente {
         if (vacio(txtCurp))    { warn("La CURP es obligatoria.", txtCurp);        return false; }
         if (vacio(txtRFC))     { warn("El RFC es obligatorio.", txtRFC);          return false; }
         if (vacio(txtCorreo))  { warn("El correo es obligatorio.", txtCorreo);    return false; }
-        // NSS opcional: si lo rellenas, valida formato simple (11 dígitos)
         String nss = txtNSS.getText().trim();
         if (!nss.isEmpty() && !nss.matches("\\d{11}")) {
             warn("El NSS debe tener 11 dígitos (o déjalo vacío).", txtNSS);

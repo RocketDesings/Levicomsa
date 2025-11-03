@@ -140,6 +140,7 @@ public class PantallaAdmin implements Refrescable {
         if (btnCambiarContra != null) btnCambiarContra.setFont(fText);
         if (btnAdministracion != null) btnAdministracion.setFont(fText);
         if (btnBitacoras != null) btnBitacoras.setFont(fText);
+        if (btnConsultarCortes != null) btnConsultarCortes.setFont(fText);
         if (btnConsultarCliente != null) btnConsultarCliente.setFont(fText);
         if (btnModificarCliente != null) btnModificarCliente.setFont(fText);
         if (btnEliminar != null) btnEliminar.setFont(fText);
@@ -236,6 +237,7 @@ public class PantallaAdmin implements Refrescable {
 
         // Botones
         if (btnAgregarCliente != null) stylePrimaryButton(btnAgregarCliente);
+        if (btnConsultarCortes != null) styleGhostButton(btnConsultarCortes);
         if (btnModificarCliente != null) styleGhostButton(btnModificarCliente);
         if (btnConsultarCliente != null) styleGhostButton(btnConsultarCliente);
         if (btnCambiarContra != null) styleGhostButton(btnCambiarContra);
