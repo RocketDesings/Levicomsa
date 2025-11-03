@@ -302,6 +302,23 @@ public class PantallaAsesor implements Refrescable {
         }
     }
 
+    private static String capitalizarRol(String s) {
+        if (s == null || s.isBlank()) return "";
+        String[] parts = s.split("/");
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            String p = parts[i].trim();
+            if (!p.isEmpty()) {
+                out.append(Character.toUpperCase(p.charAt(0)));
+                if (p.length() > 1) out.append(p.substring(1).toLowerCase());
+            }
+            if (i < parts.length - 1) out.append("/");
+        }
+        return out.toString();
+    }
+
+
+
     // ========= DATOS DEL ASESOR =========
     private void cargarDatosAsesor() {
         if (usuarioId <= 0) {
@@ -350,7 +367,8 @@ public class PantallaAsesor implements Refrescable {
 
         if (lblNombre   != null) lblNombre.setText(nombreTrabajador != null ? nombreTrabajador : "Asesor");
         if (lblSucursal != null) lblSucursal.setText(nombreSucursal   != null ? nombreSucursal   : "");
-        if (lblPuesto   != null) lblPuesto.setText(puesto            != null ? puesto            : "");
+        if (lblPuesto   != null) lblPuesto.setText(capitalizarRol(puesto));
+
     }
 
     // ========= CARGA DE CLIENTES =========
