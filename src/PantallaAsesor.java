@@ -17,9 +17,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class PantallaAsesor implements Refrescable {
 
@@ -50,6 +55,8 @@ public class PantallaAsesor implements Refrescable {
     private JLabel lblPuesto;
     private JButton btnCambiarContra;
     private JButton btnConsultarCliente;
+    private JPanel paneLogos;
+    private JPanel panelInfos;
 
     // ====== comportamiento ======
     private AutoActualizarTabla autoActualizador;
@@ -83,7 +90,8 @@ public class PantallaAsesor implements Refrescable {
     Font fText2  = new Font("Segoe UI", Font.PLAIN, 12);
     // hover visual para la tabla (igual que Admin)
     private int hoverRow = -1;
-
+    private static final ZoneId ZONA_MAZATLAN = ZoneId.of("America/Mazatlan");
+    private static final Locale  LOCALE_MX    = new Locale("es", "MX");
     public PantallaAsesor() { this(-1); }
     public PantallaAsesor(int usuarioId) {
         this.usuarioId = usuarioId;
@@ -96,14 +104,7 @@ public class PantallaAsesor implements Refrescable {
         pantalla.setUndecorated(false);
         pantalla.setContentPane(panelMain);
         pantalla.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-        // Iconos (si tienes helper UiImages)
-        try {
-            UiImages.setIcon(lblIcono, "/images/levicomsa.png", 150);
-            UiImages.setIcon(lblImagen, "/images/usuario.png", 100);
-        } catch (Throwable ignore) {}
-
-        // Fullscreen (maximizada, no exclusiva)
+        // Pantalla completa (maximizada, no exclusiva)
         pantalla.setExtendedState(JFrame.MAXIMIZED_BOTH);
         pantalla.setResizable(true);
         pantalla.addWindowStateListener(e -> {
@@ -113,9 +114,15 @@ public class PantallaAsesor implements Refrescable {
             }
         });
         pantalla.addWindowListener(new WindowAdapter() {
-            @Override public void windowClosing(WindowEvent e) { stopAuto(); }
-            @Override public void windowClosed (WindowEvent e) { stopAuto(); }
+            @Override public void windowClosing(WindowEvent e)  { stopAuto(); }
+            @Override public void windowClosed (WindowEvent e)  { stopAuto(); }
         });
+
+        // Iconos (si tienes helper UiImages)
+        try {
+            UiImages.setIcon(lblIcono, "/images/levicomsa.png", 150);
+            UiImages.setIcon(lblImagen, "/images/usuario.png", 100);
+        } catch (Throwable ignore) {}
 
         // Estilo general (espejo de Admin)
         applyTheme();
@@ -172,6 +179,9 @@ public class PantallaAsesor implements Refrescable {
         decorateAsCard(panelBotones);
         decorateAsCard(panelTabla);
         decorateAsCard(panelBusqueda);
+        decorateAsCard(paneLogos);
+        decorateAsCard(panelInfos);
+        decorateAsCard(panelMain    );
 
         // Scrollbars modernos (igual que Admin)
         JScrollPane scr = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, tblAsesor);
@@ -184,7 +194,7 @@ public class PantallaAsesor implements Refrescable {
 
         // Tipografías y jerarquía visual (igual que Admin)
         if (lblSlogan != null) {
-            lblSlogan.setText("<html>Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de tus necesidades.</html>");
+            lblSlogan.setText("<html>Comprometidos con tu tranquilidad, ofreciéndote soluciones a la medida de <br>tus necesidades.</html>");
             lblSlogan.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 22));
             lblSlogan.setForeground(TEXT_MUTED);
         }
@@ -229,8 +239,15 @@ public class PantallaAsesor implements Refrescable {
     // ========= RELOJ =========
     private void iniciarReloj() {
         if (lblHora == null) return;
-        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-        Timer timer = new Timer(1000, e -> lblHora.setText(formato.format(new Date())));
+
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                .withLocale(LOCALE_MX);
+
+        javax.swing.Timer timer = new javax.swing.Timer(1000, e -> {
+            String ahora = ZonedDateTime.now(ZONA_MAZATLAN).format(fmt);
+            lblHora.setText(ahora); // hora local Mazatlán
+        });
+        timer.setInitialDelay(0);
         timer.start();
     }
 

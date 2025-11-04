@@ -17,9 +17,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class PantallaAdmin implements Refrescable {
 
@@ -94,7 +99,8 @@ public class PantallaAdmin implements Refrescable {
     private int hoverRow = -1;
     // 1) Campo para evitar duplicados (colócalo junto a tus otros dialogs)
     private JDialog dlgConsultarCortes;
-
+    private static final ZoneId ZONA_MAZATLAN = ZoneId.of("America/Mazatlan");
+    private static final Locale  LOCALE_MX    = new Locale("es", "MX");
     // ---------- constructores ----------
     public PantallaAdmin() { this(-1); }
     public PantallaAdmin(int usuarioId) {
@@ -272,10 +278,18 @@ public class PantallaAdmin implements Refrescable {
         }
     }
 
+    // ========= RELOJ =========
     private void iniciarReloj() {
         if (lblHora == null) return;
-        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-        Timer timer = new Timer(1000, e -> lblHora.setText(formato.format(new Date())));
+
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                .withLocale(LOCALE_MX);
+
+        javax.swing.Timer timer = new javax.swing.Timer(1000, e -> {
+            String ahora = ZonedDateTime.now(ZONA_MAZATLAN).format(fmt);
+            lblHora.setText(ahora); // hora local Mazatlán
+        });
+        timer.setInitialDelay(0);
         timer.start();
     }
 
@@ -809,5 +823,4 @@ public class PantallaAdmin implements Refrescable {
         });
         dlgConsultarCortes.setVisible(true);
     }
-
 }

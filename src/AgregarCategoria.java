@@ -17,11 +17,28 @@ public class AgregarCategoria {
     private JButton btnSalir;
     private JPanel panelInfo;
     private JPanel panelMain;
+    private JPanel panelContenedor;
 
     // ----- contexto -----
     private final int usuarioId;
     private final int sucursalId;
     private final Runnable onSaved;
+
+    // ====== PALETA / TIPOGRAFÍA (solo UI) ======
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
 
     // ====== constructores ======
     public AgregarCategoria(int usuarioId, int sucursalId, Runnable onSaved) {
@@ -52,38 +69,45 @@ public class AgregarCategoria {
 
     // ====== UI / estilo ======
     private void configurarUI() {
+        // Fondos base
         if (panelMain != null) panelMain.setOpaque(false);
+        if (panelContenedor != null) panelContenedor.setOpaque(false);
         if (panelInfo != null) panelInfo.setOpaque(false);
         if (panelDatos != null) panelDatos.setOpaque(false);
         if (panelBotones != null) panelBotones.setOpaque(false);
 
-        // Combo Activo
-        if (cmbActivo != null) {
-            cmbActivo.setModel(new DefaultComboBoxModel<>(new String[]{"Sí", "No"}));
-            cmbActivo.setSelectedIndex(0);
-        }
+        // Tarjetas
+        decorateAsCard(panelContenedor);
+        decorateAsCard(panelInfo);
+        decorateAsCard(panelDatos);
+        decorateAsCard(panelBotones);
 
-        // Campos con borde redondeado y placeholder
+        // Tipos
         if (txtNombre != null) {
+            txtNombre.setFont(fText);
             styleTextField(txtNombre);
             setPlaceholder(txtNombre, "Nombre de la categoría");
         }
+        if (cmbActivo != null) {
+            cmbActivo.setModel(new DefaultComboBoxModel<>(new String[]{"Sí", "No"}));
+            cmbActivo.setSelectedIndex(0);
+            cmbActivo.setFont(fText);
+        }
 
-        // Botones
-        if (btnAgregar != null) styleSolidButton(btnAgregar, new Color(0x20A93D)); // verde
-        if (btnSalir != null)   styleSolidButton(btnSalir,   new Color(0xEF4040)); // rojo
+        // Botones (usa tus UIs estándar)
+        if (btnAgregar != null) stylePrimaryButton(btnAgregar);
+        if (btnSalir != null)   styleExitButton(btnSalir);
     }
 
     /** Envuelve el contenido con padding para que pack() quede compacto. */
     private JComponent wrapCompact(JComponent content) {
         JPanel root = new JPanel(new BorderLayout());
-        root.setBorder(new EmptyBorder(16, 16, 16, 16));
 
-        // Tarjeta blanca con sombra suave
+        // Tarjeta blanca con sombra (consistente con tus cards)
         JPanel card = new JPanel(new BorderLayout());
         card.setOpaque(true);
-        card.setBackground(Color.WHITE);
-        card.setBorder(new EmptyBorder(18, 18, 18, 18));
+        card.setBackground(CARD_BG);
+        card.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
 
         card.add(content, BorderLayout.CENTER);
         root.add(card, BorderLayout.CENTER);
@@ -92,35 +116,35 @@ public class AgregarCategoria {
         if (content.getPreferredSize() == null ||
                 content.getPreferredSize().width == 0 ||
                 content.getPreferredSize().height == 0) {
-            content.setPreferredSize(new Dimension(520, 240));
         }
         return root;
     }
 
+    // ====== estilos de campo y botones ======
     private void styleTextField(JTextField tf) {
         tf.setOpaque(true);
         tf.setBackground(Color.WHITE);
-        tf.setForeground(Color.BLACK);
-        tf.setCaretColor(Color.BLACK);
-        tf.setBorder(new CompoundBorderRounded(new Color(0xCBD5E1), 10, 1, new Insets(10, 12, 10, 12)));
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
         tf.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
-                tf.setBorder(new CompoundBorderRounded(new Color(0x20A93D), 10, 2, new Insets(10, 12, 10, 12)));
+                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
             }
             @Override public void focusLost(FocusEvent e) {
-                tf.setBorder(new CompoundBorderRounded(new Color(0xCBD5E1), 10, 1, new Insets(10, 12, 10, 12)));
+                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
             }
         });
     }
 
     private void setPlaceholder(JTextField tf, String placeholder) {
-        Color muted = new Color(0x6B7280);
+        Color muted = TEXT_MUTED;
         tf.setForeground(muted);
         tf.setText(placeholder);
         tf.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
                 if (tf.getText().equals(placeholder)) {
-                    tf.setText(""); tf.setForeground(Color.BLACK);
+                    tf.setText(""); tf.setForeground(TEXT_PRIMARY);
                 }
             }
             @Override public void focusLost(FocusEvent e) {
@@ -131,16 +155,32 @@ public class AgregarCategoria {
         });
     }
 
-    private void styleSolidButton(JButton b, Color bg) {
-        Color hover   = bg.darker();
-        Color pressed = new Color(
-                Math.max(bg.getRed()-35,0),
-                Math.max(bg.getGreen()-35,0),
-                Math.max(bg.getBlue()-35,0)
-        );
-        b.setUI(new ModernButtonUI(bg, hover, pressed, Color.WHITE, 12, true));
+    private void stylePrimaryButton(JButton b) {
+        // Igual que pantallaCajero: usa ModernButtonUI de PantallaAdmin
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setFont(b.getFont().deriveFont(Font.BOLD, 14f));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setForeground(Color.WHITE);
+    }
+
+    private void styleExitButton(JButton b) {
+        // Botón rojo consistente con tu estilo
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 
     // ====== acciones ======
@@ -188,40 +228,7 @@ public class AgregarCategoria {
         if (w instanceof JDialog d) d.dispose();
     }
 
-    // ====== helpers de borde/botón ======
-    static class ModernButtonUI extends javax.swing.plaf.basic.BasicButtonUI {
-        private final Color bg, hover, press, fg;
-        private final int arc;
-        private final boolean filled;
-
-        ModernButtonUI(Color bg, Color hover, Color press, Color fg, int arc, boolean filled) {
-            this.bg = bg; this.hover = hover; this.press = press; this.fg = fg; this.arc = arc; this.filled = filled;
-        }
-        @Override public void installUI(JComponent c) {
-            super.installUI(c);
-            AbstractButton b = (AbstractButton) c;
-            b.setOpaque(false);
-            b.setBorder(new EmptyBorder(12, 18, 12, 18));
-            b.setRolloverEnabled(true);
-            b.setFocusPainted(false);
-            b.setForeground(fg);
-        }
-        @Override public void paint(Graphics g, JComponent c) {
-            AbstractButton b = (AbstractButton) c;
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            ButtonModel m = b.getModel();
-            Color fill = m.isPressed() ? press : (m.isRollover() ? hover : bg);
-
-            if (filled || fill.getAlpha() > 0) {
-                g2.setColor(fill);
-                g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), arc, arc);
-            }
-            g2.dispose();
-            super.paint(g, c);
-        }
-    }
+    // ====== helpers de borde ======
     static class CompoundBorderRounded extends javax.swing.border.CompoundBorder {
         CompoundBorderRounded(Color line, int arc, int thickness, Insets innerPad) {
             super(new RoundedLineBorder(line, arc, thickness), new EmptyBorder(innerPad));

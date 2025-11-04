@@ -85,10 +85,19 @@ public class CRUDServicios {
         // modificar
         if (btnModificarServicio != null) {
             btnModificarServicio.addActionListener(e -> {
+                Integer servicioId = getSelectedServicioId();
+                if (servicioId == null) {
+                    JOptionPane.showMessageDialog(panelTabla, "Selecciona un servicio.");
+                    return;
+                }
+                Integer categoriaId = getSelectedServicioCategoriaId();
+
                 Window owner = SwingUtilities.getWindowAncestor(btnModificarServicio);
-                ModificarServicio.open(owner, usuarioId, sucursalId, this::cargarServicios);
+                // usa el open con IDs iniciales:
+                ModificarServicio.open(owner, usuarioId, sucursalId, this::cargarServicios, servicioId, categoriaId);
             });
         }
+
 
         // eliminar
         if (btnEliminarServicio != null) {
@@ -422,4 +431,13 @@ public class CRUDServicios {
         c.setBackground(CARD_BG);
         c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
+    private Integer getSelectedServicioCategoriaId() {
+        int viewRow = tblServicios.getSelectedRow();
+        if (viewRow < 0) return null;
+        int modelRow = tblServicios.convertRowIndexToModel(viewRow);
+        Object v = modelo.getValueAt(modelRow, COL_CAT_ID_HIDDEN);
+        if (v == null) return null;
+        return (v instanceof Integer) ? (Integer) v : Integer.parseInt(String.valueOf(v));
+    }
+
 }

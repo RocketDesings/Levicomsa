@@ -88,12 +88,10 @@ public class CambiarContrasenaDialog extends JDialog {
         headText.add(title);
         headText.add(Box.createVerticalStrut(3));
         headText.add(subtitle);
-        header.add(headText, BorderLayout.WEST);
+        header.add(headText, BorderLayout.CENTER);
         root.add(header, BorderLayout.NORTH);
 
         decorateAsCard(header);
-        header.setAlignmentX(CENTER_ALIGNMENT);
-        headText.setAlignmentX(CENTER_ALIGNMENT);
 
         // ===== Centro: sidebar + formulario =====
         JPanel center = new JPanel(new BorderLayout(16,16));
@@ -128,7 +126,7 @@ public class CambiarContrasenaDialog extends JDialog {
         kbdTitle.setForeground(TEXT_PRIMARY);
         kbdTitle.setBorder(new EmptyBorder(2,12,4,12));
 
-        JLabel kbd = new JLabel("<html>• <b>Enter</b>: Guardar<br>• <b>Esc</b>: Cancelar</html>");
+        JLabel kbd = new JLabel("<html>• <b>Enter</b>: Guardar<br>• <b>Esc<br></b>: Cancelar</html>");
         kbd.setForeground(TEXT_MUTED);
         kbd.setBorder(new EmptyBorder(0,12,12,12));
 

@@ -25,20 +25,29 @@ public class FormularioAgregarCliente extends JFrame {
     public JButton btnAgregar;
     public JButton btnCancelar;
     private JTextField txtNSS;
+    private JPanel panelDatos;
+    private JPanel panelInfo;
+    private JPanel panelBotones;
 
     private final Refrescable pantallaPrincipal;
 
     // ===== Paleta (igual que Login) =====
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
     private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
-    private static final Color BG_TOP       = new Color(0x052E16);
-    private static final Color BG_BOT       = new Color(0x064E3B);
-    private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
-    private static final Color TEXT_MUTED   = new Color(0x67676E);
-    private static final Color BORDER_SOFT  = new Color(0x535353);
     private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+
+
 
     public FormularioAgregarCliente(Refrescable pantallaPrincipal, int usuarioId) {
         this.pantallaPrincipal = pantallaPrincipal;
@@ -89,16 +98,20 @@ public class FormularioAgregarCliente extends JFrame {
         styleTextField(txtRFC);
         styleTextField(txtCorreo);
         styleTextField(txtNSS);
+        decorateAsCard(panelBotones);
+        decorateAsCard(panelDatos);
+        decorateAsCard(mainPanel);
+        decorateAsCard(panelInfo);
+        styleCheckBox(chechPensionado);
+
 
         // ===== Botones (consistentes con Login) =====
         if (btnAgregar != null) {
             stylePrimaryButton(btnAgregar);
-            btnAgregar.setBorder(new EmptyBorder(12, 18, 12, 18));
             btnAgregar.addActionListener(e -> agregarCliente());
         }
         if (btnCancelar != null) {
             styleExitButton(btnCancelar); // <- rojo sólido
-            btnCancelar.setBorder(new EmptyBorder(12, 18, 12, 18));
             btnCancelar.addActionListener(e -> {
                 dispose();
                 if (pantallaPrincipal != null) pantallaPrincipal.refrescarDatos();
@@ -117,42 +130,11 @@ public class FormularioAgregarCliente extends JFrame {
 
     // ======================= ESTILO (igual que Login) =======================
 
-    private void styleTextField(JTextField tf) {
-        if (tf == null) return;
-        tf.setOpaque(true);
-        tf.setBackground(Color.WHITE);
-        tf.setForeground(TEXT_PRIMARY);
-        tf.setCaretColor(TEXT_PRIMARY);
-        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
-        tf.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
-                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
-            }
-            @Override public void focusLost(FocusEvent e) {
-                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
-            }
-        });
-    }
-
-    private void stylePrimaryButton(JButton b) {
-        b.setUI(new ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 12, true));
-        b.setForeground(Color.WHITE);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-
     private void styleOutlineButton(JButton b) {
         // Outline sobrio (igual patrón que en Admin/Asesor)
         b.setUI(new ModernButtonUI(new Color(0,0,0,0), new Color(0,0,0,25), new Color(0,0,0,45), TEXT_PRIMARY, 12, false));
         b.setForeground(TEXT_PRIMARY);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-
-    // “Card” blanca con sombra y borde sutil (idéntica a Login)
-    private void decorateAsCard(JComponent c) {
-        if (c == null) return;
-        c.setOpaque(true);
-        c.setBackground(CARD_BG);
-        c.setBorder(new CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 
     // ======= Helpers de estilo reutilizados =======
@@ -199,7 +181,6 @@ public class FormularioAgregarCliente extends JFrame {
             super.installUI(c);
             AbstractButton b = (AbstractButton) c;
             b.setOpaque(false);
-            b.setBorder(new EmptyBorder(12, 18, 12, 18));
             b.setRolloverEnabled(true);
             b.setFocusPainted(false);
             b.setForeground(fg);
@@ -265,15 +246,6 @@ public class FormularioAgregarCliente extends JFrame {
             g2.drawRoundRect(x+1, y+1, w-3, h-3, arc, arc);
             g2.dispose();
         }
-    }
-
-    private void styleExitButton(JButton b) {
-        Color ROJO_BASE    = new Color(0xDC2626); // rojo principal
-        Color ROJO_HOVER   = new Color(0xEF4444); // hover (más claro)
-        Color ROJO_PRESSED = new Color(0xB91C1C); // pressed (más oscuro)
-        b.setUI(new ModernButtonUI(ROJO_BASE, ROJO_HOVER, ROJO_PRESSED, Color.WHITE, 12, true));
-        b.setForeground(Color.WHITE);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
     // ======================= LÓGICA ORIGINAL (SIN CAMBIOS) =======================
@@ -418,4 +390,158 @@ public class FormularioAgregarCliente extends JFrame {
             if (v instanceof Font) UIManager.put(k, f);
         }
     }
+    private void stylePrimaryButton(JButton b) {
+        // Igual que pantallaCajero: usa ModernButtonUI de PantallaAdmin
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setForeground(Color.WHITE);
+    }
+
+    // Botón rojo consistente con tu estilo
+    private void styleExitButton(JButton b) {
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    private void styleTextField(JTextField tf) {
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
+            }
+        });
+    }
+    // ======================= SOLO ESTILO CHECKBOX =======================
+
+    private void styleCheckBox(JCheckBox cb) {
+        if (cb == null) return;
+        cb.setOpaque(false);
+        cb.setFocusPainted(false);
+        cb.setRolloverEnabled(true);
+        cb.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cb.setForeground(TEXT_PRIMARY);
+        cb.setFont(fText);
+        cb.setIconTextGap(10);
+
+        // Iconos personalizados (normal, seleccionado y sus variantes hover)
+        cb.setIcon(new CheckIcon(false));
+        cb.setSelectedIcon(new CheckIcon(true));
+        cb.setRolloverIcon(new CheckIcon(false, true));
+        cb.setRolloverSelectedIcon(new CheckIcon(true, true));
+
+        // Borde/foco visual alrededor del texto cuando toma foco (no cambia lógica)
+        cb.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) { cb.repaint(); }
+            @Override public void focusLost(FocusEvent e) { cb.repaint(); }
+        });
+    }
+
+    /* Icono minimalista para JCheckBox con esquinas redondeadas, hover y foco. */
+    static class CheckIcon implements Icon {
+        private final int size;
+        private final boolean selected;
+        private final boolean hoverVariant;
+
+        // Paleta (usa los mismos colores que ya tienes en la clase)
+        private static final Color BOX_BG         = Color.WHITE;
+        private static final Color BOX_BORDER     = new Color(0x535353); // BORDER_SOFT
+        private static final Color BOX_BG_HOVER   = new Color(0xF3F4F6);
+        private static final Color BOX_BG_SELECTED= new Color(0x16A34A); // GREEN_BASE
+        private static final Color BOX_BG_SEL_HOV = new Color(0x22C55E); // GREEN_SOFT
+        private static final Color CHECK_COLOR    = Color.WHITE;
+        private static final Color FOCUS_RING     = new Color(0x059669); // BORDER_FOCUS
+
+        CheckIcon(boolean selected) { this(selected, false); }
+        CheckIcon(boolean selected, boolean hoverVariant) {
+            this.size = 18; // tamaño del cuadro (HiDPI friendly)
+            this.selected = selected;
+            this.hoverVariant = hoverVariant;
+        }
+
+        @Override public int getIconWidth()  { return size; }
+        @Override public int getIconHeight() { return size; }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            AbstractButton b = (AbstractButton) c;
+            boolean rollover = b.getModel().isRollover() || hoverVariant;
+            boolean focus = b.isFocusOwner();
+
+            int arc = Math.round(size * 0.35f); // radio redondeado
+            int pad = 1;
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // Fondo caja
+            Color fill;
+            if (selected) {
+                fill = rollover ? BOX_BG_SEL_HOV : BOX_BG_SELECTED;
+            } else {
+                fill = rollover ? BOX_BG_HOVER : BOX_BG;
+            }
+            g2.setColor(fill);
+            g2.fillRoundRect(x + pad, y + pad, size - pad*2, size - pad*2, arc, arc);
+
+            // Borde caja (solo cuando NO está seleccionada; seleccionada ya es sólida)
+            if (!selected) {
+                g2.setColor(BOX_BORDER);
+                g2.drawRoundRect(x + pad, y + pad, size - pad*2, size - pad*2, arc, arc);
+            }
+
+            // Anillo de foco sutil
+            if (focus) {
+                g2.setColor(new Color(FOCUS_RING.getRed(), FOCUS_RING.getGreen(), FOCUS_RING.getBlue(), 90));
+                int fpad = pad - 1; // un poco más grande
+                g2.drawRoundRect(x + fpad, y + fpad, size - fpad*2, size - fpad*2, arc + 4, arc + 4);
+            }
+
+            // Check (dibujamos solo si está seleccionado)
+            if (selected) {
+                g2.setStroke(new BasicStroke(Math.max(2f, size * 0.13f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.setColor(CHECK_COLOR);
+
+                // Trazo en "✔": empieza 1/4, baja a 1/2 y sube a 3/4 del ancho
+                int cx = x + pad;
+                int cy = y + pad;
+                int w  = size - pad*2;
+                int h  = size - pad*2;
+
+                int x1 = cx + Math.round(w * 0.22f);
+                int y1 = cy + Math.round(h * 0.55f);
+                int x2 = cx + Math.round(w * 0.42f);
+                int y2 = cy + Math.round(h * 0.73f);
+                int x3 = cx + Math.round(w * 0.78f);
+                int y3 = cy + Math.round(h * 0.27f);
+
+                g2.drawLine(x1, y1, x2, y2);
+                g2.drawLine(x2, y2, x3, y3);
+            }
+
+            g2.dispose();
+        }
+    }
+
 }

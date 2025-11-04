@@ -252,9 +252,6 @@ public class CRUDUsuarios {
 
     // ===================== Estilo (como CRUDServicios) =====================
     private void compactLookAndFeel() {
-        // Márgenes del contenedor principal
-        if (panelMain != null) panelMain.setBorder(new EmptyBorder(8, 10, 10, 10));
-
         // Botones grandes + colores
         makeBig(btnAgregarUsuario);
         makeBig(btnModificarUsuario);
@@ -313,7 +310,6 @@ public class CRUDUsuarios {
             super.installUI(c);
             AbstractButton b = (AbstractButton) c;
             b.setOpaque(false);
-            b.setBorder(new EmptyBorder(10, 24, 10, 24));
             b.setRolloverEnabled(true);
             b.setFocusPainted(false);
             b.setForeground(fg);
@@ -355,7 +351,6 @@ public class CRUDUsuarios {
     private void stylePrimaryButton(JButton b) {
         if (b == null) return;
         b.setUI(new HerramientasAdmin.ModernButtonUI(GREEN_BASE, GREEN_SOFT, GREEN_DARK, Color.WHITE, 14, true));
-        b.setBorder(new EmptyBorder(12,18,12,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setFocusPainted(false);
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -363,7 +358,6 @@ public class CRUDUsuarios {
     private void styleExitButton(JButton b) {
         if (b == null) return;
         b.setUI(new HerramientasAdmin.ModernButtonUI(RED_BASE, RED_HOV, RED_PR, Color.WHITE, 14, true));
-        b.setBorder(new EmptyBorder(12,18,12,18));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setFocusPainted(false);
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));

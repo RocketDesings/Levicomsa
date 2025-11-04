@@ -25,8 +25,13 @@ public class pantallaCajero {
     private JPanel panelBotones;
     private JLabel lblBienvenida;
     private JLabel lblMonto;
-    private JPanel panelExtra;
-    private JButton btnCambiarContra;
+    private JPanel panelTextos;
+
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
     private static final Color BORDER_SOFT  = new Color(0x535353);
     private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
@@ -34,9 +39,9 @@ public class pantallaCajero {
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
     private static final Color BORDER_FOCUS = new Color(0x059669);
-    Font fText  = new Font("Segoe UI", Font.PLAIN, 16);
-    Font fTitle = new Font("Segoe UI", Font.BOLD, 22);
-    Font fTitle2 = new Font("Segoe UI", Font.BOLD, 24);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+
     // Contexto
     private int sucursalId;         // puede resolverse desde BD
     private final int usuarioId;
@@ -66,9 +71,11 @@ public class pantallaCajero {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
         frame.setLocationRelativeTo(null);
-        decorateAsCard(panelExtra);
+        decorateAsCard(panelMonto);
         decorateAsCard(panelMain);
-        lblTitulo.setFont(fTitle2);
+        decorateAsCard(panelTextos);
+        decorateAsCard(panelMain);
+        decorateAsCard(panelBotones);
         lblBienvenida.setFont(fTitle);
         lblNombre.setFont(fTitle);
         lblMonto.setFont(fText);
@@ -167,20 +174,6 @@ public class pantallaCajero {
             try { if (con != null) con.close(); } catch (Exception ignore) {}
         }
     }
-    private void stylePrimaryButton(JButton b) {
-        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 10, true));
-        b.setBorder(new EmptyBorder(10,18,10,28));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-    private void styleExitButton(JButton b) {
-        Color ROJO_BASE    = new Color(0xDC2626);
-        Color GRIS_HOVER   = new Color(0xD1D5DB);
-        Color GRIS_PRESSED = new Color(0x9CA3AF);
-        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
-        b.setBorder(new EmptyBorder(10,18,10,28));
-        b.setForeground(Color.WHITE);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
     private void styleTextField(JTextField tf) {
         tf.setOpaque(true);
         tf.setBackground(Color.WHITE);
@@ -215,12 +208,6 @@ public class pantallaCajero {
         } catch (Exception ignored) {}
         return -1;
     }
-    private void decorateAsCard(JComponent c) {
-        if (c == null) return;
-        c.setOpaque(true);
-        c.setBackground(CARD_BG);
-        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
-    }
     private void mostrarNombreUsuario() {
         String nombre = "Cajero";
         final String sql = """
@@ -240,6 +227,33 @@ public class pantallaCajero {
             }
         } catch (Exception ignored) {}
         if (lblNombre != null) lblNombre.setText(nombre);
+    }
+    private void stylePrimaryButton(JButton b) {
+        // Igual que pantallaCajero: usa ModernButtonUI de PantallaAdmin
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setForeground(Color.WHITE);
+    }
+
+    // Botón rojo consistente con tu estilo
+    private void styleExitButton(JButton b) {
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
     }
 
     // Overloads para abrir desde otros módulos

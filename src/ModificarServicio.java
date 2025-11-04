@@ -2,6 +2,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicButtonUI;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.Objects;
@@ -26,11 +28,38 @@ public class ModificarServicio {
     private final int sucursalId;
     private final Runnable onSaved; // callback para refrescar lista en CRUDServicios
 
+    // ----- preselección (nuevo) -----
+    private final Integer initServicioId;    // servicio a seleccionar al abrir (puede ser null)
+    private final Integer initCategoriaId;   // categoría a seleccionar al abrir (puede ser null)
+    private boolean initialSelectionDone = false; // evita reintentos en cambios posteriores
+
+    // ====== PALETA / TIPOGRAFÍA (solo presentación) ======
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+
     // ======= constructores =======
     public ModificarServicio(int usuarioId, int sucursalId, Runnable onSaved) {
+        this(usuarioId, sucursalId, onSaved, null, null);
+    }
+    public ModificarServicio(int usuarioId, int sucursalId, Runnable onSaved,
+                             Integer initServicioId, Integer initCategoriaId) {
         this.usuarioId = usuarioId;
         this.sucursalId = sucursalId;
         this.onSaved = onSaved;
+        this.initServicioId = initServicioId;
+        this.initCategoriaId = initCategoriaId;
 
         configurarUI();
         cargarCombos();
@@ -50,16 +79,22 @@ public class ModificarServicio {
     }
 
     // ======= apertura centrada/compacta =======
-    /** Abre el diálogo centrado, con tamaño justo (pack) y sin “lienzo” extra. */
+    /** Mantengo el open original para compatibilidad. */
     public static JDialog open(Window owner, int usuarioId, int sucursalId, Runnable onSaved) {
-        ModificarServicio ui = new ModificarServicio(usuarioId, sucursalId, onSaved);
+        return open(owner, usuarioId, sucursalId, onSaved, null, null);
+    }
+
+    /** Nuevo: open con preselección de servicio y categoría. */
+    public static JDialog open(Window owner, int usuarioId, int sucursalId, Runnable onSaved,
+                               Integer servicioId, Integer categoriaId) {
+        ModificarServicio ui = new ModificarServicio(usuarioId, sucursalId, onSaved, servicioId, categoriaId);
 
         JDialog d = new JDialog(owner, "Modificar servicio", Dialog.ModalityType.APPLICATION_MODAL);
         d.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         d.setContentPane(ui.buildCompactContent());
-        d.pack();                    // tamaño justo según preferred sizes
-        d.setResizable(false);       // que no se agrande accidentalmente
-        d.setLocationRelativeTo(owner != null && owner.isShowing() ? owner : null); // centro
+        d.pack();
+        d.setResizable(false);
+        d.setLocationRelativeTo(owner != null && owner.isShowing() ? owner : null);
 
         if (ui.btnModificar != null) d.getRootPane().setDefaultButton(ui.btnModificar);
 
@@ -98,29 +133,25 @@ public class ModificarServicio {
             cmbActivo.setSelectedIndex(0);
         }
 
-        // === FORMATO DE BOTONES (lo que pediste) ===
-        if (btnModificar != null) stylePrimaryButton(btnModificar); // verde
-        if (btnSalir != null)     styleDangerButton(btnSalir);      // rojo
-    }
+        // ===== Estilo (solo UI) =====
+        applyTheme();
 
-    // ===================== estilos de botón =====================
-    private void stylePrimaryButton(JButton b) {
-        // verde: #22C55E / hover #16A34A / press #15803D
-        b.setUI(new ModernButtonUI(new Color(0x22C55E), new Color(0x16A34A), new Color(0x15803D),
-                Color.WHITE, 12, true));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-    private void styleDangerButton(JButton b) {
-        // rojo: #EF4444 / hover #DC2626 / press #B91C1C
-        b.setUI(new ModernButtonUI(new Color(0xEF4444), new Color(0xDC2626), new Color(0xB91C1C),
-                Color.WHITE, 12, true));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        // Botones con el estilo pedido
+        if (btnModificar != null) stylePrimaryButton(btnModificar); // verde
+        if (btnSalir != null)     styleExitButton(btnSalir);        // rojo
     }
 
     // ===================== combos/carga =====================
     private void cargarCombos() {
         cargarCategorias();
-        recargarServiciosDeCategoria(); // carga inicial según 1ra categoría
+
+        // Si nos pasaron categoría inicial, selecciónala aquí
+        if (initCategoriaId != null) {
+            seleccionarCategoriaPorId(initCategoriaId);
+        }
+
+        // Carga servicios de la categoría seleccionada
+        recargarServiciosDeCategoria();
     }
 
     private void cargarCategorias() {
@@ -136,7 +167,9 @@ public class ModificarServicio {
             JOptionPane.showMessageDialog(panelMain, "Error al cargar categorías: " + e.getMessage());
         }
         cmbCategoria.setModel(m);
-        if (m.getSize() > 0) cmbCategoria.setSelectedIndex(0);
+        if (m.getSize() > 0 && initCategoriaId == null) {
+            cmbCategoria.setSelectedIndex(0);
+        }
     }
 
     private void recargarServiciosDeCategoria() {
@@ -157,12 +190,24 @@ public class ModificarServicio {
             }
         }
         cmbServicio.setModel(m);
-        if (m.getSize() > 0) {
+
+        // Selección inicial del servicio si nos lo pasaron (solo 1 vez)
+        if (!initialSelectionDone && initServicioId != null) {
+            int idx = indexOfServicioId(m, initServicioId);
+            if (idx >= 0) cmbServicio.setSelectedIndex(idx);
+            initialSelectionDone = true;
+        } else if (m.getSize() > 0 && cmbServicio.getSelectedIndex() < 0) {
             cmbServicio.setSelectedIndex(0);
-            cargarDatosServicioSeleccionado();
-        } else {
-            limpiarCampos();
         }
+
+        cargarDatosServicioSeleccionado();
+    }
+
+    private int indexOfServicioId(DefaultComboBoxModel<ServicioItem> m, int id) {
+        for (int i = 0; i < m.getSize(); i++) {
+            if (m.getElementAt(i).id == id) return i;
+        }
+        return -1;
     }
 
     private void cargarDatosServicioSeleccionado() {
@@ -176,7 +221,8 @@ public class ModificarServicio {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     int catId = rs.getInt("categoria_id");
-                    seleccionarCategoriaPorId(catId);
+                    seleccionarCategoriaPorId(catId); // asegura que la categoría corresponde
+
                     if (txtNombreServicio != null) txtNombreServicio.setText(nvl(rs.getString("nombre")));
                     if (txtDescripcion != null)   txtDescripcion.setText(nvl(rs.getString("descripcion")));
                     if (txtPrecio != null)        txtPrecio.setText(rs.getBigDecimal("precio") != null ? rs.getBigDecimal("precio").toPlainString() : "0");
@@ -194,7 +240,9 @@ public class ModificarServicio {
         ComboBoxModel<CategoriaItem> m = cmbCategoria.getModel();
         for (int i = 0; i < m.getSize(); i++) {
             if (m.getElementAt(i).id == catId) {
-                cmbCategoria.setSelectedIndex(i);
+                if (cmbCategoria.getSelectedIndex() != i) {
+                    cmbCategoria.setSelectedIndex(i);
+                }
                 return;
             }
         }
@@ -290,7 +338,7 @@ public class ModificarServicio {
         @Override public String toString() { return nombre; }
     }
 
-    // ===== UI de botón moderno =====
+    // ===== UI de botón moderno (queda por compatibilidad si lo usabas en otro lado) =====
     static class ModernButtonUI extends BasicButtonUI {
         private final Color bg, hover, press, fg;
         private final int arc;
@@ -329,6 +377,106 @@ public class ModificarServicio {
 
             g2.dispose();
             super.paint(g, c); // pinta texto/icono
+        }
+    }
+
+    // ============================
+    // ===== SOLO ESTILO UI =======
+    // ============================
+    private void applyTheme() {
+        // Tarjetas
+        decorateAsCard(panelMain);
+        decorateAsCard(panelDatos);
+        decorateAsCard(panelInfo);
+        decorateAsCard(panelBotones);
+
+        // Tipografías
+        if (txtNombreServicio != null) txtNombreServicio.setFont(fText);
+        if (txtDescripcion != null)    txtDescripcion.setFont(fText);
+        if (txtPrecio != null)         txtPrecio.setFont(fText);
+        if (cmbCategoria != null)      cmbCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        if (cmbServicio != null)       cmbServicio.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        if (cmbActivo != null)         cmbActivo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+
+        // Campos con borde y focus
+        if (txtNombreServicio != null) styleTextField(txtNombreServicio);
+        if (txtDescripcion != null)    styleTextField(txtDescripcion);
+        if (txtPrecio != null)         styleTextField(txtPrecio);
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        // Igual que pantallaCajero: usa ModernButtonUI de PantallaAdmin
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setForeground(Color.WHITE);
+    }
+
+    // Botón rojo consistente con tu estilo
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+
+    // Mantengo este alias porque en tu versión anterior llamabas a styleDangerButton
+    private void styleDangerButton(JButton b) {
+        styleExitButton(b);
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
+    private void styleTextField(JTextField tf) {
+        tf.setOpaque(true);
+        tf.setBackground(Color.WHITE);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
+            }
+            @Override public void focusLost(FocusEvent e) {
+                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
+            }
+        });
+        tf.setFont(fText);
+    }
+
+    // ===== BORDES REDONDEADOS (helper visual) =====
+    static class CompoundBorderRounded extends javax.swing.border.CompoundBorder {
+        CompoundBorderRounded(Color line, int arc, int thickness, Insets innerPad) {
+            super(new RoundedLineBorder(line, arc, thickness), new EmptyBorder(innerPad));
+        }
+    }
+    static class RoundedLineBorder extends javax.swing.border.AbstractBorder {
+        private final Color color; private final int arc; private final int thickness;
+        RoundedLineBorder(Color color, int arc, int thickness) { this.color = color; this.arc = arc; this.thickness = thickness; }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            for (int i = 0; i < thickness; i++) {
+                g2.drawRoundRect(x + i, y + i, w - 1 - 2 * i, h - 1 - 2 * i, arc, arc);
+            }
+            g2.dispose();
+        }
+        @Override public Insets getBorderInsets(Component c) { return new Insets(thickness, thickness, thickness, thickness); }
+        @Override public Insets getBorderInsets(Component c, Insets insets) {
+            insets.set(thickness, thickness, thickness, thickness); return insets;
         }
     }
 }

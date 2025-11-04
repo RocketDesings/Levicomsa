@@ -25,6 +25,22 @@ public class ModificarCategoria {
     private final int categoriaId;
     private final Runnable onSaved;
 
+    // ===== PALETA / TIPOS (unificado) =====
+    private static final Color BG_TOP       = new Color(0x052E16);
+    private static final Color BG_BOT       = new Color(0x064E3B);
+    private static final Color TEXT_MUTED   = new Color(0x67676E);
+    private static final Color TABLE_ALT    = new Color(0xF9FAFB);
+    private static final Color TABLE_SEL_BG = new Color(0xE6F7EE);
+    private static final Color BORDER_SOFT  = new Color(0x535353);
+    private static final Color CARD_BG      = new Color(255, 255, 255);
+    private static final Color GREEN_DARK   = new Color(0x0A6B2A);
+    private static final Color GREEN_BASE   = new Color(0x16A34A);
+    private static final Color GREEN_SOFT   = new Color(0x22C55E);
+    private static final Color TEXT_PRIMARY = new Color(0x111827);
+    private static final Color BORDER_FOCUS = new Color(0x059669);
+    private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
+    private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 22);
+
     // ===== constructores =====
     public ModificarCategoria(int usuarioId, int sucursalId, int categoriaId, Runnable onSaved) {
         this.usuarioId = usuarioId;
@@ -54,15 +70,22 @@ public class ModificarCategoria {
 
     // ================== UI / Estilo ==================
     private void configurarUI() {
-        if (panelMain  != null) panelMain.setOpaque(false);
-        if (panelInfo  != null) panelInfo.setOpaque(false);
-        if (panelDatos != null) panelDatos.setOpaque(false);
+        // fondos transparentes; usaremos "cards"
+        if (panelMain    != null) panelMain.setOpaque(false);
+        if (panelInfo    != null) panelInfo.setOpaque(false);
+        if (panelDatos   != null) panelDatos.setOpaque(false);
         if (panelBotones != null) panelBotones.setOpaque(false);
+
+        // Tipografías base
+        if (txtNombre != null) txtNombre.setFont(fText);
+        if (cmbActivo != null) cmbActivo.setFont(fText);
 
         // Combo Activo
         if (cmbActivo != null) {
             cmbActivo.setModel(new DefaultComboBoxModel<>(new String[]{"Sí", "No"}));
             cmbActivo.setSelectedIndex(0);
+            cmbActivo.setBackground(Color.WHITE);
+            cmbActivo.setForeground(TEXT_PRIMARY);
         }
 
         // Campo nombre con borde y placeholder
@@ -71,20 +94,24 @@ public class ModificarCategoria {
             setPlaceholder(txtNombre, "Nombre de la categoría");
         }
 
-        // Botones
-        if (btnModificar != null) styleSolidButton(btnModificar, new Color(0x20A93D)); // verde
-        if (btnSalir != null)     styleSolidButton(btnSalir,     new Color(0xEF4040)); // rojo
+        // Botones con estilo unificado
+        stylePrimaryButton(btnModificar);
+        styleExitButton(btnSalir);
+
+        // Tarjetas (bordes redondeados/sombras)
+        decorateAsCard(panelMain);
+        decorateAsCard(panelInfo);
+        decorateAsCard(panelDatos);
+        decorateAsCard(panelBotones);
     }
 
     /** Envuelve el contenido con padding + tarjeta blanca (compacto). */
     private JComponent wrapCompact(JComponent content) {
         JPanel root = new JPanel(new BorderLayout());
-        root.setBorder(new EmptyBorder(16, 16, 16, 16));
+        root.setBackground(new Color(0xF3F4F6));
 
         JPanel card = new JPanel(new BorderLayout());
-        card.setOpaque(true);
-        card.setBackground(Color.WHITE);
-        card.setBorder(new EmptyBorder(18, 18, 18, 18));
+        decorateAsCard(card);
         card.add(content, BorderLayout.CENTER);
 
         root.add(card, BorderLayout.CENTER);
@@ -92,47 +119,71 @@ public class ModificarCategoria {
         if (content.getPreferredSize() == null ||
                 content.getPreferredSize().width == 0 ||
                 content.getPreferredSize().height == 0) {
-            content.setPreferredSize(new Dimension(520, 240));
         }
         return root;
     }
 
+    // ======== ESTILOS REUTILIZABLES (no cambian lógica) ========
+    private void stylePrimaryButton(JButton b) {
+        if (b == null) return;
+        // Igual que pantallaCajero: usa ModernButtonUI de PantallaAdmin
+        b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setForeground(Color.WHITE);
+    }
+
+    // Botón rojo consistente con tu estilo
+    private void styleExitButton(JButton b) {
+        if (b == null) return;
+        Color ROJO_BASE    = new Color(0xDC2626);
+        Color GRIS_HOVER   = new Color(0xD1D5DB);
+        Color GRIS_PRESSED = new Color(0x9CA3AF);
+        b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
+        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setForeground(Color.WHITE);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+    }
+
+    private void decorateAsCard(JComponent c) {
+        if (c == null) return;
+        c.setOpaque(true);
+        c.setBackground(CARD_BG);
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+    }
+
     private void styleTextField(JTextField tf) {
+        if (tf == null) return;
         tf.setOpaque(true);
         tf.setBackground(Color.WHITE);
-        tf.setForeground(Color.BLACK);
-        tf.setCaretColor(Color.BLACK);
-        tf.setBorder(new CompoundBorderRounded(new Color(0xCBD5E1), 10, 1, new Insets(10, 12, 10, 12)));
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(TEXT_PRIMARY);
+        tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10, 12, 10, 12)));
         tf.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
-                tf.setBorder(new CompoundBorderRounded(new Color(0x20A93D), 10, 2, new Insets(10, 12, 10, 12)));
+                tf.setBorder(new CompoundBorderRounded(BORDER_FOCUS, 12, 2, new Insets(10,12,10,12)));
             }
             @Override public void focusLost(FocusEvent e) {
-                tf.setBorder(new CompoundBorderRounded(new Color(0xCBD5E1), 10, 1, new Insets(10, 12, 10, 12)));
+                tf.setBorder(new CompoundBorderRounded(BORDER_SOFT, 12, 1, new Insets(10,12,10,12)));
             }
         });
     }
 
     private void setPlaceholder(JTextField tf, String placeholder) {
-        Color muted = new Color(0x6B7280);
+        if (tf == null) return;
+        Color muted = TEXT_MUTED;
         tf.setForeground(muted);
         tf.setText(placeholder);
         tf.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
-                if (tf.getText().equals(placeholder)) { tf.setText(""); tf.setForeground(Color.BLACK); }
+                if (placeholder.equals(tf.getText())) { tf.setText(""); tf.setForeground(TEXT_PRIMARY); }
             }
             @Override public void focusLost(FocusEvent e) {
                 if (tf.getText().isEmpty()) { tf.setForeground(muted); tf.setText(placeholder); }
             }
         });
-    }
-
-    private void styleSolidButton(JButton b, Color bg) {
-        Color hover   = bg.darker();
-        Color pressed = new Color(Math.max(bg.getRed()-35,0), Math.max(bg.getGreen()-35,0), Math.max(bg.getBlue()-35,0));
-        b.setUI(new ModernButtonUI(bg, hover, pressed, Color.WHITE, 12, true));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setFont(b.getFont().deriveFont(Font.BOLD, 14f));
     }
 
     // ================== Carga y guardado ==================
@@ -201,7 +252,7 @@ public class ModificarCategoria {
         if (w instanceof JDialog d) d.dispose();
     }
 
-    // ====== helpers de borde/botón ======
+    // ====== helpers de borde/botón (dejados por compatibilidad) ======
     static class ModernButtonUI extends javax.swing.plaf.basic.BasicButtonUI {
         private final Color bg, hover, press, fg;
         private final int arc; private final boolean filled;

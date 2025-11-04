@@ -38,7 +38,7 @@ public class HerramientasAdmin extends JDialog {
     private static final Color RED_PR       = new Color(0x9CA3AF);
     private static final Color BG_CANVAS    = new Color(0xF3F4F6);
     private static final Color CARD_BG      = Color.WHITE;
-    private static final Color BORDER_SOFT  = new Color(0xE5E7EB);
+    private static final Color BORDER_SOFT  = new Color(0x050505);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
     private static final Color TEXT_MUTED   = new Color(0x6B7280);
     private static final Color BORDER_FOCUS = new Color(0x059669);

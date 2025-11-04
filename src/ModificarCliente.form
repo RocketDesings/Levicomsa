@@ -226,7 +226,7 @@
                 </constraints>
                 <properties>
                   <font size="24" style="1"/>
-                  <text value="Datos del cliente"/>
+                  <text value="Servicios Levicomsa"/>
                 </properties>
               </component>
               <component id="9ec13" class="javax.swing.JLabel">
@@ -234,8 +234,8 @@
                   <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
-                  <font size="16" style="1"/>
-                  <text value="Modifique los datos necesarios"/>
+                  <font size="18" style="1"/>
+                  <text value="Datos del cliente"/>
                 </properties>
               </component>
             </children>
