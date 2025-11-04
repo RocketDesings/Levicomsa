@@ -3,10 +3,14 @@
     <output-path>$PROJECT_DIR$/out/artifacts/Levicomsa_jar</output-path>
     <root id="archive" name="Levicomsa.jar">
       <element id="module-output" name="Levicomsa" />
-      <element id="extracted-dir" path="$USER_HOME$/Downloads/slf4j-api-2.0.13.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$USER_HOME$/Downloads/mysql-connector-j-9.2.0/mysql-connector-j-9.2.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/Downloads/HikariCP-5.1.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/Downloads/slf4j-simple-2.0.13.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/Downloads/slf4j-api-2.0.13.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/Downloads/mysql-connector-j-9.2.0/mysql-connector-j-9.2.0.jar" path-in-jar="/" />
+      <element id="file-copy" path="$USER_HOME$/Downloads/mysql-connector-j-9.2.0/mysql-connector-j-9.2.0.jar" />
+      <element id="library" level="project" name="HikariCP-5.1.0" />
+      <element id="library" level="project" name="slf4j-api-2.0.13" />
+      <element id="library" level="project" name="slf4j-simple-2.0.13" />
     </root>
   </artifact>
 </component>
