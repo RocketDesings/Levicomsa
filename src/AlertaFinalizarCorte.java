@@ -46,6 +46,7 @@ public class AlertaFinalizarCorte {
         decorateAsCard(panelMain);
         decorateAsCard(panelBotones);
         decorateAsCard(panelMensaje);
+        decorateAsCard(panelContenedor);
         styleExitButton(btnSalir);
         stylePrimaryButton(btnConfirmar);
     }
