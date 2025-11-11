@@ -26,6 +26,8 @@ public class SeleccionarCliente2 implements Refrescable {
     private static final int COL_RFC        = 4;
     private static final int COL_NSS        = 5;
     private static final int COL_CORREO     = 6;
+    private static final int COL_NOTAS      = 7; // ← NUEVO
+
     private final int usuarioId;
     private final Refrescable refrescable;
 
@@ -142,7 +144,7 @@ public class SeleccionarCliente2 implements Refrescable {
 
     // ---------------- UI / Tabla ----------------
     private void configurarTabla() {
-        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo"};
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo", "Notas"}; // ← + Notas
         modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
             @Override public Class<?> getColumnClass(int col) { return String.class; }
@@ -181,7 +183,13 @@ public class SeleccionarCliente2 implements Refrescable {
             sp.setBorder(new MatteBorder(1,1,1,1, BORDER_SOFT));
             sp.getViewport().setBackground(CARD_BG);
         }
+
+        // (Opcional) dar un ancho cómodo a la nueva columna "Notas"
+        // if (tblClientes.getColumnModel().getColumnCount() >= 8) {
+        //     tblClientes.getColumnModel().getColumn(7).setPreferredWidth(260);
+        // }
     }
+
 
     private void cablearEventos() {
         // Doble clic
@@ -259,10 +267,12 @@ public class SeleccionarCliente2 implements Refrescable {
         String curp       = getStr(row, COL_CURP);
         String pensionado = getStr(row, COL_PENSIONADO);
         String rfc        = getStr(row, COL_RFC);
+        String nss        = getStr(row, COL_NSS);    // ← ahora lo usamos
         String correo     = getStr(row, COL_CORREO);
-        // Nota: NSS se muestra/filtra, pero el constructor legacy no lo recibe.
+        String notas      = getStr(row, COL_NOTAS);  // ← NUEVO
 
-        new ModificarCliente(refrescable, nombre, telefono, curp, rfc, correo, pensionado, usuarioId);
+        // Usa el constructor que recibe NSS y Notas
+        new ModificarCliente(refrescable, nombre, telefono, curp, rfc, correo, pensionado, nss, notas, usuarioId);
     }
 
     private String getStr(int row, int col) {
@@ -272,7 +282,9 @@ public class SeleccionarCliente2 implements Refrescable {
 
     // ---------------- Datos ----------------
     public void cargarClientesDesdeBD() {
-        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo FROM Clientes ORDER BY nombre";
+        final String sql =
+                "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo, COALESCE(notas,'') AS notas " +
+                        "FROM Clientes ORDER BY nombre";
 
         try (Connection conn = DB.get();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -288,18 +300,19 @@ public class SeleccionarCliente2 implements Refrescable {
                 String rfc        = rs.getString(5);
                 String nss        = rs.getString(6);
                 String correo     = rs.getString(7);
-                modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
+                String notas      = rs.getString(8); // NUEVO
+                modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo, notas});
             }
 
-            // Ajusta anchos por contenido y tamaño de ventana
-            packAllColumns(tblClientes, 16, 120, 420); // margen=16, min=120, max=420 por columna
+            // Si usas autosize por contenido
+            packAllColumns(tblClientes, 16, 120, 420);
             ajustarVentanaSegunTabla();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(panel1, "Error al cargar clientes: " + e.getMessage());
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Error al cargar clientes:\n" + ex.getMessage());
         }
     }
+
 
     // ---------------- Refrescable ----------------
     @Override

@@ -28,6 +28,7 @@ public class FormularioAgregarCliente extends JFrame {
     private JPanel panelDatos;
     private JPanel panelInfo;
     private JPanel panelBotones;
+    private JTextField txtNotas;
 
     private final Refrescable pantallaPrincipal;
 
@@ -98,11 +99,13 @@ public class FormularioAgregarCliente extends JFrame {
         styleTextField(txtRFC);
         styleTextField(txtCorreo);
         styleTextField(txtNSS);
+        styleTextField(txtNotas);
         decorateAsCard(panelBotones);
         decorateAsCard(panelDatos);
         decorateAsCard(mainPanel);
         decorateAsCard(panelInfo);
         styleCheckBox(chechPensionado);
+
 
 
         // ===== Botones (consistentes con Login) =====
@@ -250,18 +253,8 @@ public class FormularioAgregarCliente extends JFrame {
 
     // ======================= LÓGICA ORIGINAL (SIN CAMBIOS) =======================
     private void agregarCliente() {
-        // (… tu mismo código original sin tocar …)
-        // ===== Validaciones =====
-        if (!ValidarJTextField.validarNoVacio(txtNombre)) {
-            mostrarError("El nombre no puede estar vacío.", txtNombre); return;
-        }
-        if (!ValidarJTextField.validarSoloLetras(txtNombre)) {
-            mostrarError("El nombre solo debe contener letras.", txtNombre); return;
-        }
-        if (!ValidarJTextField.validarLongitudMaxima(txtNombre, 100)) {
-            mostrarError("El nombre no debe superar los 100 caracteres.", txtNombre); return;
-        }
-
+        // ===== VALIDACIONES (solo teléfono obligatorio) =====
+        // Teléfono: obligatorio, solo números, máx 15
         if (!ValidarJTextField.validarNoVacio(txtTelefono)) {
             mostrarError("El teléfono no puede estar vacío.", txtTelefono); return;
         }
@@ -272,36 +265,55 @@ public class FormularioAgregarCliente extends JFrame {
             mostrarError("El teléfono no debe exceder los 15 dígitos.", txtTelefono); return;
         }
 
-        if (!ValidarJTextField.validarNoVacio(txtCurp)) {
-            mostrarError("La CURP no puede estar vacía.", txtCurp); return;
+        // Nombre: OPCIONAL (si se escribe, validar)
+        if (!ValidarJTextField.validarLongitudMaxima(txtNombre, 100)) {
+            mostrarError("El nombre no debe superar los 100 caracteres.", txtNombre); return;
         }
-        if (!ValidarJTextField.validarLongitudExacta(txtCurp, 18)) {
-            mostrarError("La CURP debe tener exactamente 18 caracteres.", txtCurp); return;
-        }
-        if (!ValidarJTextField.validarCURP(txtCurp)) {
-            mostrarError("La CURP no tiene un formato válido.", txtCurp); return;
-        }
-
-        if (!ValidarJTextField.validarNoVacio(txtRFC)) {
-            mostrarError("El RFC no puede estar vacío.", txtRFC); return;
-        }
-        if (!ValidarJTextField.validarLongitudExacta(txtRFC, 13)) {
-            mostrarError("El RFC debe tener exactamente 13 caracteres.", txtRFC); return;
-        }
-        if (!ValidarJTextField.validarRFC(txtRFC)) {
-            mostrarError("El RFC no tiene un formato válido.", txtRFC); return;
+        String nombre = txtNombre != null ? txtNombre.getText().trim() : "";
+        if (!nombre.isEmpty() && !ValidarJTextField.validarSoloLetras(txtNombre)) {
+            mostrarError("El nombre solo debe contener letras.", txtNombre); return;
         }
 
-        if (!ValidarJTextField.validarNoVacio(txtCorreo)) {
-            mostrarError("El correo no puede estar vacío.", txtCorreo); return;
-        }
-        if (!ValidarJTextField.validarEmail(txtCorreo)) {
-            mostrarError("El correo no tiene un formato válido.", txtCorreo); return;
-        }
-        if (!ValidarJTextField.validarLongitudMaxima(txtCorreo, 100)) {
-            mostrarError("El correo no debe superar los 100 caracteres.", txtCorreo); return;
+        // CURP: OPCIONAL (si se escribe, validar formato/longitud; vacío -> NULL)
+        String curp = txtCurp != null ? txtCurp.getText().trim().toUpperCase() : "";
+        if (curp.isEmpty()) {
+            curp = null;
+        } else {
+            if (!ValidarJTextField.validarLongitudExacta(txtCurp, 18)) {
+                mostrarError("La CURP debe tener exactamente 18 caracteres.", txtCurp); return;
+            }
+            if (!ValidarJTextField.validarCURP(txtCurp)) {
+                mostrarError("La CURP no tiene un formato válido.", txtCurp); return;
+            }
         }
 
+        // RFC: OPCIONAL (si se escribe, validar; vacío -> NULL)
+        String rfc = txtRFC != null ? txtRFC.getText().trim().toUpperCase() : "";
+        if (rfc.isEmpty()) {
+            rfc = null;
+        } else {
+            if (!ValidarJTextField.validarLongitudExacta(txtRFC, 13)) {
+                mostrarError("El RFC debe tener exactamente 13 caracteres.", txtRFC); return;
+            }
+            if (!ValidarJTextField.validarRFC(txtRFC)) {
+                mostrarError("El RFC no tiene un formato válido.", txtRFC); return;
+            }
+        }
+
+        // Correo: OPCIONAL (si se escribe, validar; vacío -> NULL)
+        String correo = txtCorreo != null ? txtCorreo.getText().trim() : "";
+        if (correo.isEmpty()) {
+            correo = null;
+        } else {
+            if (!ValidarJTextField.validarEmail(txtCorreo)) {
+                mostrarError("El correo no tiene un formato válido.", txtCorreo); return;
+            }
+            if (!ValidarJTextField.validarLongitudMaxima(txtCorreo, 100)) {
+                mostrarError("El correo no debe superar los 100 caracteres.", txtCorreo); return;
+            }
+        }
+
+        // NSS: OPCIONAL (si se escribe, validar dígitos 11-15; vacío -> NULL)
         String nss = txtNSS != null ? txtNSS.getText().trim() : "";
         if (!nss.isEmpty()) {
             if (!nss.matches("\\d{11,15}")) {
@@ -312,33 +324,58 @@ public class FormularioAgregarCliente extends JFrame {
             nss = null;
         }
 
-        String nombre   = txtNombre.getText().trim();
-        String telefono = txtTelefono.getText().trim();
-        String curp     = txtCurp.getText().trim().toUpperCase();
-        boolean pensionado = chechPensionado != null && chechPensionado.isSelected();
-        String rfc      = txtRFC.getText().trim().toUpperCase();
-        String correo   = txtCorreo.getText().trim();
+        // Notas: OPCIONAL (vacío -> NULL)
+        String notas = (txtNotas != null) ? txtNotas.getText().trim() : "";
+        if (notas.isEmpty()) notas = null;
 
-        final String sql = "INSERT INTO Clientes (nombre, telefono, CURP, pensionado, RFC, NSS, correo) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        // Pensionado (checkbox)
+        boolean pensionado = chechPensionado != null && chechPensionado.isSelected();
+
+        // Teléfono (obligatorio, ya validado)
+        String telefono = txtTelefono.getText().trim();
+
+        final String sql = "INSERT INTO Clientes (nombre, telefono, CURP, pensionado, RFC, NSS, correo, notas) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DB.get()) {
             conn.setAutoCommit(false);
+
             if (usuarioId > 0) {
                 try (PreparedStatement ps = conn.prepareStatement("SET @app_user_id = ?")) {
                     ps.setInt(1, usuarioId);
                     ps.executeUpdate();
                 }
             }
+
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                // 1) nombre (si lo quieres NULL cuando viene vacío, cambia a setNull)
                 ps.setString(1, nombre);
+
+                // 2) telefono (obligatorio)
                 ps.setString(2, telefono);
-                ps.setString(3, curp);
+
+                // 3) CURP (NULL si vacío)
+                if (curp == null) ps.setNull(3, java.sql.Types.VARCHAR);
+                else              ps.setString(3, curp);
+
+                // 4) pensionado
                 ps.setBoolean(4, pensionado);
-                ps.setString(5, rfc);
-                if (nss == null) ps.setNull(6, java.sql.Types.VARCHAR);
-                else             ps.setString(6, nss);
-                ps.setString(7, correo);
+
+                // 5) RFC (NULL si vacío)
+                if (rfc == null)  ps.setNull(5, java.sql.Types.VARCHAR);
+                else              ps.setString(5, rfc);
+
+                // 6) NSS (NULL si vacío)
+                if (nss == null)  ps.setNull(6, java.sql.Types.VARCHAR);
+                else              ps.setString(6, nss);
+
+                // 7) correo (NULL si vacío)
+                if (correo == null) ps.setNull(7, java.sql.Types.VARCHAR);
+                else                ps.setString(7, correo);
+
+                // 8) notas (NULL si vacío)
+                if (notas == null) ps.setNull(8, java.sql.Types.VARCHAR);
+                else               ps.setString(8, notas);
 
                 int resultado = ps.executeUpdate();
                 conn.commit();
@@ -376,6 +413,7 @@ public class FormularioAgregarCliente extends JFrame {
             ex.printStackTrace();
         }
     }
+
     private void mostrarError(String mensaje, JTextField campo) {
         JOptionPane.showMessageDialog(this, mensaje, "Validación", JOptionPane.WARNING_MESSAGE);
         if (campo != null) campo.requestFocus();

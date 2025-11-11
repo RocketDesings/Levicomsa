@@ -284,40 +284,32 @@ public class PantallaAsesor implements Refrescable {
 
     // ========= TABLA (igual que Admin: header verde, zebra, hover) =========
     private void configurarTabla() {
-        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo"};
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo", "Notas"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         tblAsesor.setModel(modelo);
+
         sorter = new TableRowSorter<>(modelo);
         tblAsesor.setRowSorter(sorter);
+
         tblAsesor.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         tblAsesor.setRowHeight(30);
         tblAsesor.setShowGrid(false);
         tblAsesor.setIntercellSpacing(new Dimension(0, 0));
 
-        // Header verde
         JTableHeader header = tblAsesor.getTableHeader();
         header.setDefaultRenderer(new HeaderRenderer(header.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
-        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 32));
 
-        // Zebra + selección + hover
         tblAsesor.setDefaultRenderer(Object.class, new ZebraRenderer());
-        tblAsesor.addMouseMotionListener(new MouseAdapter() {
-            @Override public void mouseMoved(MouseEvent e) {
-                int r = tblAsesor.rowAtPoint(e.getPoint());
-                if (r != hoverRow) { hoverRow = r; tblAsesor.repaint(); }
-            }
-        });
-        tblAsesor.addMouseListener(new MouseAdapter() {
-            @Override public void mouseExited(MouseEvent e) { hoverRow = -1; tblAsesor.repaint(); }
-        });
 
-        int[] widths = {220, 140, 160, 110, 160, 140, 260};
+        int[] widths = {220, 140, 160, 110, 160, 140, 260, 240};
         for (int i = 0; i < Math.min(widths.length, tblAsesor.getColumnCount()); i++) {
             tblAsesor.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
     }
+
 
     private static String capitalizarRol(String s) {
         if (s == null || s.isBlank()) return "";
@@ -390,8 +382,9 @@ public class PantallaAsesor implements Refrescable {
 
     // ========= CARGA DE CLIENTES =========
     public void cargarClientesDesdeBD() {
-        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo " +
-                "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
+        final String sql =
+                "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo, COALESCE(notas,'') AS notas " +
+                        "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
 
         try (Connection conn = DB.get();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -419,7 +412,8 @@ public class PantallaAsesor implements Refrescable {
                     String rfc        = rs.getString(5);
                     String nss        = rs.getString(6);
                     String correo     = rs.getString(7);
-                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
+                    String notas      = rs.getString(8);
+                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo, notas});
                 }
             }
         } catch (SQLException e) {
@@ -427,6 +421,7 @@ public class PantallaAsesor implements Refrescable {
             e.printStackTrace();
         }
     }
+
 
     public void mostrar() {
         pantalla.setVisible(true);

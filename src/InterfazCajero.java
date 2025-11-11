@@ -330,13 +330,15 @@ public class InterfazCajero implements Refrescable {
 
     // ========= TABLA CLIENTES =========
     private void configurarTabla() {
-        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo"};
+        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo", "Notas"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         tblAsesor.setModel(modelo);
+
         sorter = new TableRowSorter<>(modelo);
         tblAsesor.setRowSorter(sorter);
+
         tblAsesor.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         tblAsesor.setRowHeight(30);
         tblAsesor.setShowGrid(false);
@@ -344,24 +346,16 @@ public class InterfazCajero implements Refrescable {
 
         JTableHeader header = tblAsesor.getTableHeader();
         header.setDefaultRenderer(new HeaderRenderer(header.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
-        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 32));
 
-        tblAsesor.setDefaultRenderer(Object.class, new ZebraRendererClientes());
-        tblAsesor.addMouseMotionListener(new MouseAdapter() {
-            @Override public void mouseMoved(MouseEvent e) {
-                int r = tblAsesor.rowAtPoint(e.getPoint());
-                if (r != hoverRowClientes) { hoverRowClientes = r; tblAsesor.repaint(); }
-            }
-        });
-        tblAsesor.addMouseListener(new MouseAdapter() {
-            @Override public void mouseExited(MouseEvent e) { hoverRowClientes = -1; tblAsesor.repaint(); }
-        });
+        //tblAsesor.setDefaultRenderer(Object.class, new ZebraRenderer());
 
-        int[] widths = {220, 140, 160, 110, 160, 140, 260};
+        int[] widths = {220, 140, 160, 110, 160, 140, 260, 240};
         for (int i = 0; i < Math.min(widths.length, tblAsesor.getColumnCount()); i++) {
             tblAsesor.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
     }
+
     // Helper: para Capitalizar roles
     private static String capitalizarRol(String s) {
         if (s == null || s.isBlank()) return "";
@@ -435,8 +429,9 @@ public class InterfazCajero implements Refrescable {
 
     // ========= CARGA DE CLIENTES =========
     public void cargarClientesDesdeBD() {
-        final String sql = "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo " +
-                "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
+        final String sql =
+                "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo, COALESCE(notas,'') AS notas " +
+                        "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
 
         try (Connection conn = DB.get();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -464,7 +459,8 @@ public class InterfazCajero implements Refrescable {
                     String rfc        = rs.getString(5);
                     String nss        = rs.getString(6);
                     String correo     = rs.getString(7);
-                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo});
+                    String notas      = rs.getString(8);
+                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo, notas});
                 }
             }
         } catch (SQLException e) {
@@ -472,6 +468,7 @@ public class InterfazCajero implements Refrescable {
             e.printStackTrace();
         }
     }
+
 
     // ========= TABLA DE COBROS (solo pendientes) =========
     private void configurarTablaCobros() {

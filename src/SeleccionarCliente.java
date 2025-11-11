@@ -92,8 +92,8 @@ public class SeleccionarCliente implements Refrescable {
     }
 
     private void configurarTabla() {
-        // Col 0 = ID (oculta en la vista)
-        String[] cols = {"ID","Nombre","Teléfono","CURP","Pensionado","RFC","NSS","Correo"};
+        // Col 0 = ID (se oculta)
+        String[] cols = {"ID","Nombre","Teléfono","CURP","Pensionado","RFC","NSS","Correo","Notas"};
         modelo = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -105,21 +105,24 @@ public class SeleccionarCliente implements Refrescable {
         if (tblClientes.getColumnModel().getColumnCount() > 0) {
             tblClientes.removeColumn(tblClientes.getColumnModel().getColumn(0)); // oculta ID
         }
+
         JTableHeader h = tblClientes.getTableHeader();
-        h.setDefaultRenderer(new SeleccionarCliente.HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
+        h.setDefaultRenderer(new HeaderRenderer(h.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
         h.setPreferredSize(new Dimension(h.getPreferredSize().width, 32));
-        // Zebra + tooltip con texto completo
-        tblClientes.setDefaultRenderer(Object.class, new SeleccionarCliente.ZebraRenderer() {
+
+        tblClientes.setDefaultRenderer(Object.class, new ZebraRenderer() {
             @Override public Component getTableCellRendererComponent(JTable t,Object v,boolean sel,boolean foc,int r,int c){
                 Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
                 if (comp instanceof JComponent jc) jc.setToolTipText(v == null ? "" : v.toString());
                 return comp;
             }
         });
+
         tblClientes.setRowHeight(26);
         tblClientes.getTableHeader().setReorderingAllowed(false);
         tblClientes.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
     }
+
 
     private void cablearEventos() {
         // Doble clic
@@ -198,18 +201,20 @@ public class SeleccionarCliente implements Refrescable {
 
     public void cargarClientesDesdeBD() {
         final String sql = """
-            SELECT
-              id         AS Id,
-              nombre     AS Nombre,
-              telefono   AS Telefono,
-              CURP       AS CURP,
-              pensionado AS Pensionado,
-              RFC        AS RFC,
-              NSS        AS NSS,
-              correo     AS Correo
-            FROM Clientes
-            ORDER BY nombre
-            """;
+        SELECT
+          id         AS Id,
+          nombre     AS Nombre,
+          telefono   AS Telefono,
+          CURP       AS CURP,
+          pensionado AS Pensionado,
+          RFC        AS RFC,
+          NSS        AS NSS,
+          correo     AS Correo,
+          COALESCE(notas,'') AS Notas
+        FROM Clientes
+        ORDER BY nombre
+        """;
+
         try (Connection con = DB.get();
              PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -224,7 +229,8 @@ public class SeleccionarCliente implements Refrescable {
                         rs.getBoolean("Pensionado") ? "Sí" : "No",
                         rs.getString("RFC"),
                         rs.getString("NSS"),
-                        rs.getString("Correo")
+                        rs.getString("Correo"),
+                        rs.getString("Notas")
                 };
                 modelo.addRow(fila);
             }
@@ -233,6 +239,7 @@ public class SeleccionarCliente implements Refrescable {
             JOptionPane.showMessageDialog(frame, "Error al cargar clientes:\n" + ex.getMessage());
         }
     }
+
 
     private void styleExitButton(JButton b) {
         // Botón rojo consistente con tu estilo
