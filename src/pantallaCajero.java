@@ -124,10 +124,11 @@ public class pantallaCajero {
         try {
             raw = raw.replace(",", ".");
             monto = new BigDecimal(raw).setScale(2, RoundingMode.HALF_UP);
-            if (monto.compareTo(BigDecimal.ZERO) <= 0) {
-                JOptionPane.showMessageDialog(panelMain, "El monto debe ser mayor a 0.");
+            if (monto.compareTo(BigDecimal.ZERO) < 0) {
+                JOptionPane.showMessageDialog(panelMain, "El monto no puede ser negativo.");
                 return;
             }
+
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(panelMain, "Monto inválido.");
             return;

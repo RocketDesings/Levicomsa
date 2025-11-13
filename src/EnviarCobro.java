@@ -32,6 +32,8 @@ public class EnviarCobro {
     private JButton btnSeleccionarCliente;
     private JTextField txtCliente;
     private JPanel panelContenedor;
+    private JComboBox<IdNombre> cmbMetodoPago;
+    private JCheckBox checkTransfer;
 
     // ====== contexto ======
     private final int sucursalId;
@@ -77,11 +79,13 @@ public class EnviarCobro {
         this.clienteIdSel = clienteIdInicial;
 
         setUIFont(new Font("Segoe UI", Font.PLAIN, 13));
-        construirFrame();        // gradiente + card + estilos
-        cablearEventos();        // atajos y listeners
+        construirFrame();
+        cablearEventos();
 
-        if (clienteIdSel != null) cargarNombreCliente(clienteIdSel); // cliente inicial
-        cargarCategorias(); // carga inicial
+        if (clienteIdSel != null) cargarNombreCliente(clienteIdSel);
+        cargarCategorias();
+        cargarMetodosPago();
+        actualizarEstadoMetodoPago();
 
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
@@ -93,29 +97,24 @@ public class EnviarCobro {
         frame.setUndecorated(true);
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
-        // Esquinas redondeadas
         frame.addComponentListener(new ComponentAdapter() {
             @Override public void componentResized(ComponentEvent e) {
                 frame.setShape(new RoundRectangle2D.Double(0, 0, frame.getWidth(), frame.getHeight(), 24, 24));
             }
         });
 
-        // Fondo gradiente
         GradientPanel root = new GradientPanel(BG_TOP, BG_BOT);
         root.setLayout(new GridBagLayout());
 
-        // Card principal
         CardPanel card = new CardPanel();
         card.setLayout(new BorderLayout());
 
-        // Asegura panelMain
         if (panelMain == null) panelMain = new JPanel(new BorderLayout());
         panelMain.setOpaque(true);
         panelMain.setBackground(CARD_BG);
         panelMain.setBorder(new EmptyBorder(16,18,16,18));
         card.add(panelMain, BorderLayout.CENTER);
 
-        // Decorar secciones si existen
         decorateAsCard(panelCliente);
         decorateAsCard(panelCombos);
         decorateAsCard(panelMonto);
@@ -124,7 +123,6 @@ public class EnviarCobro {
         decorateAsCard(panelBotones);
         decorateAsCard(panelMain);
 
-        // Estilos de controles
         if (txtCliente != null) {
             styleTextFieldPill(txtCliente);
             txtCliente.setEditable(false);
@@ -132,14 +130,15 @@ public class EnviarCobro {
         }
         if (btnSeleccionarCliente != null) styleNeutralButton(btnSeleccionarCliente);
 
-        if (cmbCategoria != null) styleCombo(cmbCategoria);
-        if (cmbServicio  != null) styleCombo(cmbServicio);
+        if (cmbCategoria   != null) styleCombo(cmbCategoria);
+        if (cmbServicio    != null) styleCombo(cmbServicio);
+        if (cmbMetodoPago  != null) styleCombo(cmbMetodoPago);
 
         if (txtMonto != null) {
             styleTextField(txtMonto);
             setPlaceholderIfEmpty(txtMonto, "Monto (opcional: usa sugerido)");
             if (txtMonto.getDocument() instanceof AbstractDocument ad) {
-                ad.setDocumentFilter(new NumericFilter()); // sólo números, coma o punto
+                ad.setDocumentFilter(new NumericFilter());
             }
         }
 
@@ -150,18 +149,16 @@ public class EnviarCobro {
 
         if (btnEnviar != null) {
             stylePrimaryButton(btnEnviar);
-            frame.getRootPane().setDefaultButton(btnEnviar); // ENTER = enviar
+            frame.getRootPane().setDefaultButton(btnEnviar);
         }
         if (btnCancelar != null) styleDangerButton(btnCancelar);
 
-        // Montar root
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = gbc.gridy = 0;
         gbc.insets = new Insets(24,24,24,24);
         gbc.fill = GridBagConstraints.BOTH;
         root.add(card, gbc);
 
-        // “Arrastrable”
         MouseAdapter dragger = new MouseAdapter() {
             Point click;
             @Override public void mousePressed(MouseEvent e) { click = e.getPoint(); }
@@ -196,8 +193,10 @@ public class EnviarCobro {
         if (btnEnviar != null) {
             btnEnviar.addActionListener(e -> onEnviar(frame));
         }
+        if (checkTransfer != null) {
+            checkTransfer.addActionListener(e -> actualizarEstadoMetodoPago());
+        }
 
-        // ESC cierra
         if (panelMain != null) {
             panelMain.registerKeyboardAction(
                     e -> frame.dispose(),
@@ -213,9 +212,7 @@ public class EnviarCobro {
             clienteIdSel = id;
             if (txtCliente != null) txtCliente.setText(nombre);
         };
-        // Usa tu selector existente que acepta BiConsumer:
         new SeleccionarCliente(listener);
-        // Si prefieres usar otra clase, reemplaza la línea anterior por tu implementación.
     }
 
     private void cargarNombreCliente(int clienteId) {
@@ -229,7 +226,6 @@ public class EnviarCobro {
     }
 
     // ==================== CATEGORÍAS / SERVICIOS ====================
-    /** Devuelve true si el usuario puede ver la categoría “Contabilidad”. */
     private boolean puedeVerContabilidad() {
         int rol = -1;
         final String sql = "SELECT rol_id FROM Usuarios WHERE id=?";
@@ -263,7 +259,6 @@ public class EnviarCobro {
             JOptionPane.showMessageDialog(panelMain, "No se pudieron cargar categorías:\n" + ex.getMessage());
         }
 
-        // Ajustar combo después de tener datos
         styleCombo(cmbCategoria);
 
         if (model.getSize() > 0 && cmbCategoria != null) cmbCategoria.setSelectedIndex(0);
@@ -297,7 +292,6 @@ public class EnviarCobro {
             JOptionPane.showMessageDialog(panelMain, "No se pudieron cargar servicios:\n" + ex.getMessage());
         }
 
-        // Ajustar combo después de tener datos
         styleCombo(cmbServicio);
 
         if (model.getSize() > 0) cmbServicio.setSelectedIndex(0);
@@ -311,6 +305,55 @@ public class EnviarCobro {
         lblPrecioSugerido.setText("Sugerido: $" + s.precio.toPlainString());
         if (txtMonto != null && txtMonto.getText().trim().isEmpty()) {
             txtMonto.setText(s.precio.toPlainString());
+        }
+    }
+
+    // ==================== MÉTODOS DE PAGO ====================
+    private void cargarMetodosPago() {
+        if (cmbMetodoPago == null) return;
+
+        DefaultComboBoxModel<IdNombre> model = new DefaultComboBoxModel<>();
+        cmbMetodoPago.setModel(model);
+
+        final String sql = """
+            SELECT id, nombre
+            FROM metodos_pago
+            WHERE activo = 1
+              AND id IN (6, 7, 8, 9)
+            ORDER BY nombre
+            """;
+
+        try (Connection con = DB.get();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String nombre = rs.getString("nombre");
+                model.addElement(new IdNombre(id, nombre));
+            }
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(panelMain,
+                    "No se pudieron cargar los métodos de pago:\n" + ex.getMessage());
+        }
+
+        styleCombo(cmbMetodoPago);
+        if (model.getSize() > 0) {
+            cmbMetodoPago.setSelectedIndex(0);
+        }
+    }
+
+    private void actualizarEstadoMetodoPago() {
+        boolean enabled = checkTransfer != null && checkTransfer.isSelected();
+        if (cmbMetodoPago != null) {
+            cmbMetodoPago.setEnabled(enabled);
+            if (!enabled) {
+                cmbMetodoPago.setSelectedIndex(-1);
+            } else if (cmbMetodoPago.getItemCount() > 0 && cmbMetodoPago.getSelectedIndex() == -1) {
+                cmbMetodoPago.setSelectedIndex(0);
+            }
         }
     }
 
@@ -343,6 +386,19 @@ public class EnviarCobro {
             return;
         }
 
+        // Metodo de pago (solo si es transferencia)
+        IdNombre metodoPago = null;
+        if (checkTransfer != null && checkTransfer.isSelected()) {
+            metodoPago = (IdNombre) cmbMetodoPago.getSelectedItem();
+            if (metodoPago == null) {
+                JOptionPane.showMessageDialog(panelMain, "Selecciona un método de pago (cuenta de transferencia).");
+                return;
+            }
+        }
+
+        // Estado: si hay metodo de pago (transferencia) lo marcamos como pagado
+        String estado = (metodoPago != null) ? "pagado" : "pendiente";
+
         try (Connection con = DB.get()) {
             con.setAutoCommit(false);
 
@@ -352,14 +408,32 @@ public class EnviarCobro {
                 ps.executeUpdate();
             }
 
-            // 1) cobro (pendiente)
             long cobroId;
-            final String insCobro = "INSERT INTO cobros (sucursal_id, cliente_id, usuario_id, notas) VALUES (?,?,?,?)";
+
+            // AHORA también insertamos estado
+            final String insCobro =
+                    "INSERT INTO cobros (sucursal_id, cliente_id, usuario_id, metodo_pago_id, estado, notas) " +
+                            "VALUES (?,?,?,?,?,?)";
+
             try (PreparedStatement ps = con.prepareStatement(insCobro, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setInt(1, sucursalId);
                 ps.setInt(2, clienteIdSel);
                 ps.setInt(3, usuarioId);
-                ps.setString(4, "Servicio: " + s.nombre);
+
+                if (metodoPago != null) {
+                    ps.setInt(4, metodoPago.id);       // metodo_pago_id
+                } else {
+                    ps.setNull(4, Types.INTEGER);
+                }
+
+                ps.setString(5, estado);                // estado
+
+                String notas = "Servicio: " + s.nombre;
+                if (metodoPago != null) {
+                    notas += " | Método pago: " + metodoPago.nombre;
+                }
+                ps.setString(6, notas);                // notas
+
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) {
                     if (!rs.next()) throw new SQLException("No se obtuvo id de cobro");
@@ -367,8 +441,10 @@ public class EnviarCobro {
                 }
             }
 
-            // 2) detalle
-            final String insDet = "INSERT INTO cobro_detalle (cobro_id, servicio_id, cantidad, precio_unit) VALUES (?,?,1,?)";
+            // Detalle
+            final String insDet =
+                    "INSERT INTO cobro_detalle (cobro_id, servicio_id, cantidad, precio_unit) " +
+                            "VALUES (?,?,1,?)";
             try (PreparedStatement ps = con.prepareStatement(insDet)) {
                 ps.setLong(1, cobroId);
                 ps.setInt(2, s.id);
@@ -377,7 +453,9 @@ public class EnviarCobro {
             }
 
             con.commit();
-            JOptionPane.showMessageDialog(panelMain, "Cobro creado (Pendiente) para " + (txtCliente != null ? txtCliente.getText() : "cliente"));
+            JOptionPane.showMessageDialog(panelMain,
+                    "Cobro creado (" + estado + ") para " +
+                            (txtCliente != null ? txtCliente.getText() : "cliente"));
             if (owner != null) owner.dispose();
 
         } catch (Exception ex) {
@@ -385,6 +463,7 @@ public class EnviarCobro {
             JOptionPane.showMessageDialog(panelMain, "No se pudo crear el cobro:\n" + ex.getMessage());
         }
     }
+
 
     // ==================== HELPERS DE ESTILO ====================
     private void styleTextField(JTextField tf) {
@@ -423,7 +502,6 @@ public class EnviarCobro {
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
     }
 
-    // ✅ Versión genérica sin errores de captura
     private <T> void styleCombo(JComboBox<T> cb) {
         if (cb == null) return;
         cb.setBackground(Color.WHITE);
@@ -450,7 +528,7 @@ public class EnviarCobro {
 
     private void styleNeutralButton(JButton b) {
         if (b == null) return;
-        Color BASE = new Color(0x374151); // gris
+        Color BASE = new Color(0x374151);
         b.setUI(new ModernButtonUI(new Color(0xF3F4F6), new Color(0xE5E7EB), new Color(0xD1D5DB), BASE, 12, true));
         b.setForeground(BASE);
         b.setBorder(new EmptyBorder(10,16,10,16));
@@ -526,13 +604,11 @@ public class EnviarCobro {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
-            // sombra suave
             for (int i = 0; i < 10; i++) {
                 float alpha = 0.06f * (10 - i);
                 g2.setColor(new Color(0, 0, 0, (int) (alpha * 255)));
                 g2.fillRoundRect(10 - i, 12 - i, w - (10 - i) * 2, h - (12 - i) * 2, arc + i, arc + i);
             }
-            // fondo tarjeta
             g2.setColor(CARD_BG);
             g2.fillRoundRect(0, 0, w, h, arc, arc);
             g2.setColor(new Color(0,0,0,30));
@@ -587,7 +663,6 @@ public class EnviarCobro {
         }
     }
 
-    // ====== filtro numérico simple para txtMonto ======
     static class NumericFilter extends DocumentFilter {
         @Override public void insertString(FilterBypass fb, int off, String str, AttributeSet a) throws BadLocationException {
             if (str == null) return;
@@ -602,12 +677,11 @@ public class EnviarCobro {
         private String sanitize(String cur, String add) {
             String s = (cur + add).replace(",", ".").trim();
             if (s.isEmpty()) return s;
-            if (!s.matches("\\d+(\\.\\d{0,2})?")) return null; // dígitos + opcional 2 decimales
+            if (!s.matches("\\d+(\\.\\d{0,2})?")) return null;
             return s;
         }
     }
 
-    // --- API helpers para abrir la ventana desde otras pantallas ---
     public static void mostrar(int sucursalId, int usuarioId) {
         SwingUtilities.invokeLater(() -> new EnviarCobro(sucursalId, usuarioId));
     }
@@ -615,7 +689,6 @@ public class EnviarCobro {
         SwingUtilities.invokeLater(() -> new EnviarCobro(sucursalId, clienteId, usuarioId));
     }
 
-    // ===== Fuente global helper =====
     private void setUIFont(Font f) {
         try {
             Enumeration<Object> keys = UIManager.getDefaults().keys();
@@ -627,7 +700,6 @@ public class EnviarCobro {
         } catch (Exception ignored) {}
     }
     private void styleExitButton(JButton b) {
-        // Botón rojo consistente con tu estilo
         Color ROJO_BASE    = new Color(0xDC2626);
         Color GRIS_HOVER   = new Color(0xD1D5DB);
         Color GRIS_PRESSED = new Color(0x9CA3AF);

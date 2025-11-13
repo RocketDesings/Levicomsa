@@ -294,7 +294,12 @@ public class PantallaAdmin implements Refrescable {
     }
 
     private void configurarTabla() {
-        String[] columnas = {"Nombre", "Teléfono", "CURP", "Pensionado", "RFC", "NSS", "Correo", "Notas"};
+        // 8 columnas visibles + 1 oculta (ID)
+        String[] columnas = {
+                "Nombre", "Teléfono", "CURP", "Pensionado",
+                "RFC", "NSS", "Correo", "Notas", "ID"  // ID solo en el modelo
+        };
+
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
@@ -312,15 +317,21 @@ public class PantallaAdmin implements Refrescable {
         header.setDefaultRenderer(new HeaderRenderer(header.getDefaultRenderer(), GREEN_DARK, Color.WHITE));
         header.setPreferredSize(new Dimension(header.getPreferredSize().width, 32));
 
-        // Render zebra que ya usas en tu proyecto (si lo tienes)
         tblAsesor.setDefaultRenderer(Object.class, new ZebraRenderer());
 
-        int[] widths = {220, 140, 160, 110, 160, 140, 260, 240}; // + "Notas"
-        for (int i = 0; i < Math.min(widths.length, tblAsesor.getColumnCount()); i++) {
+        // Solo configuramos ancho de las 8 visibles
+        int[] widths = {220, 140, 160, 110, 160, 140, 260, 240};
+        for (int i = 0; i < widths.length && i < tblAsesor.getColumnCount(); i++) {
             tblAsesor.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
-    }
 
+        // === Ocultar completamente la columna ID (index 8 del modelo) ===
+        if (tblAsesor.getColumnCount() > 8) {
+            TableColumn colId = tblAsesor.getColumnModel().getColumn(8);
+            tblAsesor.getColumnModel().removeColumn(colId);
+            // Importante: aunque se quite del ColumnModel, sigue existiendo en el TableModel
+        }
+    }
 
     private void cablearBusquedaInline() {
         if (tfBuscar == null) return;
@@ -403,7 +414,8 @@ public class PantallaAdmin implements Refrescable {
     // ====================== Datos de clientes ======================
     public void cargarClientesDesdeBD() {
         final String sql =
-                "SELECT nombre, telefono, CURP, pensionado, RFC, NSS, correo, COALESCE(notas,'') AS notas " +
+                "SELECT id, nombre, telefono, CURP, pensionado, RFC, NSS, correo, " +
+                        "       COALESCE(notas,'') AS notas " +
                         "FROM Clientes ORDER BY nombre LIMIT ? OFFSET ?";
 
         try (Connection conn = DB.get();
@@ -425,15 +437,20 @@ public class PantallaAdmin implements Refrescable {
                 modelo.setRowCount(0);
 
                 while (rs.next()) {
-                    String nombre     = rs.getString(1);
-                    String telefono   = rs.getString(2);
-                    String curp       = rs.getString(3);
-                    String pensionado = rs.getBoolean(4) ? "Sí" : "No";
-                    String rfc        = rs.getString(5);
-                    String nss        = rs.getString(6);
-                    String correo     = rs.getString(7);
-                    String notas      = rs.getString(8); // NUEVO
-                    modelo.addRow(new Object[]{nombre, telefono, curp, pensionado, rfc, nss, correo, notas});
+                    int    id         = rs.getInt("id");
+                    String nombre     = rs.getString("nombre");
+                    String telefono   = rs.getString("telefono");
+                    String curp       = rs.getString("CURP");
+                    String pensionado = rs.getBoolean("pensionado") ? "Sí" : "No";
+                    String rfc        = rs.getString("RFC");
+                    String nss        = rs.getString("NSS");
+                    String correo     = rs.getString("correo");
+                    String notas      = rs.getString("notas");
+
+                    modelo.addRow(new Object[]{
+                            nombre, telefono, curp, pensionado,
+                            rfc, nss, correo, notas, id  // ← ID al final, oculto en la vista
+                    });
                 }
             }
         } catch (SQLException e) {
@@ -441,7 +458,6 @@ public class PantallaAdmin implements Refrescable {
             e.printStackTrace();
         }
     }
-
 
     public void mostrar() {
         pantalla.setVisible(true);
@@ -560,23 +576,54 @@ public class PantallaAdmin implements Refrescable {
     }
 
     private void eliminarCliente() {
-        int fila = tblAsesor.getSelectedRow();
-        if (fila == -1) {
+        int filaVista = tblAsesor.getSelectedRow();
+        if (filaVista == -1) {
             JOptionPane.showMessageDialog(pantalla, "Selecciona un cliente para eliminar.");
             return;
         }
-        fila = tblAsesor.convertRowIndexToModel(fila);
 
-        String nombre = tblAsesor.getModel().getValueAt(fila, 0).toString();
-        String curp   = tblAsesor.getModel().getValueAt(fila, 2).toString(); // si tu PK es id, úsalo mejor
+        int fila = tblAsesor.convertRowIndexToModel(filaVista);
+        DefaultTableModel model = (DefaultTableModel) tblAsesor.getModel();
+
+        String nombre = safeStr(model.getValueAt(fila, 0));  // Nombre
+        String tel    = safeStr(model.getValueAt(fila, 1));  // Teléfono
+        String curp   = safeStr(model.getValueAt(fila, 2));  // CURP
+        String idStr  = safeStr(model.getValueAt(fila, 8));  // ID (columna oculta en la vista)
+
+        if (idStr.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    pantalla,
+                    "No se encontró el ID del cliente seleccionado.\nNo se puede eliminar."
+            );
+            return;
+        }
+
+        int idCliente;
+        try {
+            idCliente = Integer.parseInt(idStr);
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(
+                    pantalla,
+                    "ID de cliente inválido: " + idStr
+            );
+            return;
+        }
+
+        String detalle = !curp.isEmpty() ? ("CURP " + curp) :
+                !tel.isEmpty()  ? ("Teléfono " + tel) :
+                        ("ID " + idCliente);
 
         int ok = JOptionPane.showConfirmDialog(
                 pantalla,
-                "¿Seguro que deseas eliminar a:\n" + nombre + " (CURP " + curp + ")?",
-                "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                "¿Seguro que deseas eliminar a:\n" + nombre + " (" + detalle + ")?",
+                "Confirmar eliminación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
         if (ok != JOptionPane.YES_OPTION) return;
 
-        final String sql = "DELETE FROM Clientes WHERE CURP = ?";
+        final String sql = "DELETE FROM Clientes WHERE id = ?";
+
         try (Connection conn = DB.get()) {
             if (usuarioId > 0) {
                 try (PreparedStatement set = conn.prepareStatement("SET @app_user_id = ?")) {
@@ -584,14 +631,18 @@ public class PantallaAdmin implements Refrescable {
                     set.executeUpdate();
                 }
             }
+
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, curp);
+                ps.setInt(1, idCliente);
                 int n = ps.executeUpdate();
                 if (n > 0) {
-                    JOptionPane.showMessageDialog(pantalla, "Cliente eliminado correctamente.");
+                    JOptionPane.showMessageDialog(
+                            pantalla,
+                            "Cliente eliminado correctamente.\n(Registros afectados: " + n + ")"
+                    );
                     cargarClientesDesdeBD();
                 } else {
-                    JOptionPane.showMessageDialog(pantalla, "No se encontró el cliente.");
+                    JOptionPane.showMessageDialog(pantalla, "No se encontró el cliente a eliminar.");
                 }
             }
         } catch (SQLException e) {

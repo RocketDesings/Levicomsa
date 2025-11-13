@@ -13,16 +13,6 @@ import java.sql.*;
 import java.util.*;
 import java.util.List;
 
-/**
- * RealizarCobro (.form)
- * - panelMain: contenedor principal
- * - tblTablaCobros: lista de cobros pendientes (como en InterfazCajero)
- * - tblObjetosTotal: items (detalle de cobros agregados + extras)
- * - cmbServiciosExtra: servicios de categoria_id=3
- * - cmbMetodoPago: métodos de pago desde metodos_pago (activo=1)
- * - txtCantidad, txtCobro, txtCambio, lblTotal
- * - btnAnadirObjetoExtra, btnCobrar, btnCancelarButton
- */
 public class RealizarCobro {
 
     // === Componentes del .form ===
