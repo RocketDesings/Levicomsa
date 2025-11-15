@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 
-
 public class ConsultarCortesCaja {
     // --- UI (del .form) ---
     private JPanel panelMain;
@@ -29,10 +28,8 @@ public class ConsultarCortesCaja {
     private static final Color BORDER_SOFT  = new Color(0x535353);
     private static final Color CARD_BG      = new Color(255, 255, 255);
     private static final Color GREEN_DARK   = new Color(0x0A6B2A);
-    private static final Color GREEN_BASE   = new Color(0x16A34A);
     private static final Color GREEN_SOFT   = new Color(0x22C55E);
     private static final Color TEXT_PRIMARY = new Color(0x111827);
-    private static final Color BORDER_FOCUS = new Color(0x059669);
     private final Font fText   = new Font("Segoe UI", Font.PLAIN, 16);
     private final Font fTitle  = new Font("Segoe UI", Font.BOLD, 24);
 
@@ -40,7 +37,6 @@ public class ConsultarCortesCaja {
     private DefaultTableModel modelo;
     private TableRowSorter<DefaultTableModel> sorter;
 
-    // --- ctor ---
     // --- ctor ---
     public ConsultarCortesCaja() {
         construirTabla();
@@ -57,7 +53,7 @@ public class ConsultarCortesCaja {
             });
         }
 
-        // NUEVO: doble click en la tabla para ver detalle del corte
+        // doble click en la tabla → abre el detalle
         if (tblCortes != null) {
             tblCortes.addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
@@ -73,7 +69,7 @@ public class ConsultarCortesCaja {
         }
 
         // ---- Estilo (solo UI) ----
-        if (panelMain != null) panelMain.setBorder(new EmptyBorder(12,12,12,12));
+        if (panelMain != null) panelMain.setBorder(new EmptyBorder(12, 12, 12, 12));
         if (lblTitulo != null) {
             lblTitulo.setText("Cortes de caja");
             lblTitulo.setFont(fTitle);
@@ -83,9 +79,8 @@ public class ConsultarCortesCaja {
             lblEtiqueta.setVisible(true);
             lblEtiqueta.setForeground(TEXT_MUTED);
         }
-        applyTheme(); // aplica tarjetas, botones, encabezados, etc.
+        applyTheme();
     }
-
 
     /** Crea y devuelve el diálogo listo para mostrarse. */
     public static JDialog createDialog(Window owner) {
@@ -103,12 +98,11 @@ public class ConsultarCortesCaja {
     // ===================== Tabla =====================
     private void construirTabla() {
         if (tblCortes == null) return;
-        String[] cols = {"Fecha", "ID", "Sucursal", "Usuario"}; // ← cambia encabezado
+        String[] cols = {"Fecha", "ID", "Sucursal", "Usuario"};
         modelo = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
             @Override public Class<?> getColumnClass(int c) {
-                // Col 1 = ID sigue siendo Integer; "Usuario" ahora es String
-                return (c==1) ? Integer.class : String.class;
+                return (c == 1) ? Integer.class : String.class;
             }
         };
         tblCortes.setModel(modelo);
@@ -117,7 +111,7 @@ public class ConsultarCortesCaja {
 
         tblCortes.setRowHeight(26);
         tblCortes.setShowGrid(false);
-        tblCortes.setIntercellSpacing(new Dimension(0,0));
+        tblCortes.setIntercellSpacing(new Dimension(0, 0));
         JTableHeader h = tblCortes.getTableHeader();
         h.setPreferredSize(new Dimension(h.getPreferredSize().width, 32));
 
@@ -126,7 +120,6 @@ public class ConsultarCortesCaja {
             tblCortes.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
 
-        // Estilos de tabla (renderer cabecera + zebra)
         if (h != null) {
             TableCellRenderer base = h.getDefaultRenderer();
             h.setDefaultRenderer(new HeaderRenderer(base));
@@ -147,7 +140,7 @@ public class ConsultarCortesCaja {
               c.usuario_id,
               c.generado_en,
               COALESCE(s.nombre, '') AS sucursal,
-              COALESCE(u.nombre, t.nombre, CONCAT('ID ', u.id)) AS usuario   -- ← nombre mostrado
+              COALESCE(u.nombre, t.nombre, CONCAT('ID ', u.id)) AS usuario
             FROM corte_caja_resumen c
             LEFT JOIN Usuarios u     ON u.id = c.usuario_id
             LEFT JOIN trabajadores t ON t.id = u.trabajador_id
@@ -165,7 +158,7 @@ public class ConsultarCortesCaja {
                 Timestamp ts    = rs.getTimestamp("generado_en");
                 String fecha    = (ts != null ? sdf.format(ts) : "");
                 String sucursal = rs.getString("sucursal");
-                String usuario  = rs.getString("usuario"); // ← nombre final para mostrar
+                String usuario  = rs.getString("usuario");
 
                 modelo.addRow(new Object[]{fecha, id, sucursal, usuario});
             }
@@ -179,7 +172,7 @@ public class ConsultarCortesCaja {
         int view = tblCortes.getSelectedRow();
         if (view < 0) return null;
         int modelRow = tblCortes.convertRowIndexToModel(view);
-        Object v = modelo.getValueAt(modelRow, 1); // columna "ID" se mantiene en índice 1
+        Object v = modelo.getValueAt(modelRow, 1); // columna ID
         if (v == null) return null;
         return (v instanceof Integer) ? (Integer) v : Integer.parseInt(v.toString());
     }
@@ -187,13 +180,14 @@ public class ConsultarCortesCaja {
     // ===================== Detalle (doble click) =====================
     private void mostrarDetalleCorte(int id) {
         final String sql = """
-            SELECT c.*,
-                   COALESCE(u.nombre, CONCAT('ID ', c.usuario_id)) AS usuario,
-                   COALESCE(s.nombre, '') AS sucursal
+            SELECT
+              c.*,
+              COALESCE(s.nombre, '') AS sucursal,
+              COALESCE(u.nombre, t.nombre, CONCAT('ID ', u.id)) AS usuario
             FROM corte_caja_resumen c
-            LEFT JOIN Usuarios    u ON u.id = c.usuario_id
+            LEFT JOIN Usuarios u     ON u.id = c.usuario_id
             LEFT JOIN trabajadores t ON t.id = u.trabajador_id
-            LEFT JOIN sucursales   s ON s.id = t.sucursal_id
+            LEFT JOIN sucursales s   ON s.id = t.sucursal_id
             WHERE c.id = ?
         """;
 
@@ -228,10 +222,9 @@ public class ConsultarCortesCaja {
                 double diferencia         = rs.getDouble("diferencia");
                 double ingresosTotales    = rs.getDouble("ingresos_totales");
 
-                // ===== Construir UI =====
+                // ===== UI =====
                 JPanel rootPanel = new JPanel(new BorderLayout(0, 12));
                 rootPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
-                // gris clarito de fondo para que combine con tus pantallas
                 rootPanel.setBackground(new Color(0xF3F4F6));
 
                 JLabel lblTituloDetalle = new JLabel("Detalle del corte #" + id);
@@ -251,16 +244,14 @@ public class ConsultarCortesCaja {
                 JPanel header = new JPanel(new BorderLayout(0, 4));
                 header.setOpaque(false);
                 header.add(lblTituloDetalle, BorderLayout.NORTH);
-                header.add(lblSub, BorderLayout.SOUTH);
-
+                header.add(lblSub,           BorderLayout.SOUTH);
                 rootPanel.add(header, BorderLayout.NORTH);
 
-                // "Tarjeta" con sombra igual que el resto de la app
                 JPanel card = new JPanel(new BorderLayout());
                 card.setOpaque(true);
                 card.setBackground(CARD_BG);
                 card.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(
-                        14, BORDER_SOFT, new Color(0,0,0,28)));
+                        14, BORDER_SOFT, new Color(0, 0, 0, 28)));
 
                 JPanel grid = new JPanel(new GridLayout(0, 2, 18, 10));
                 grid.setOpaque(false);
@@ -283,11 +274,16 @@ public class ConsultarCortesCaja {
                 card.add(grid, BorderLayout.CENTER);
                 rootPanel.add(card, BorderLayout.CENTER);
 
+                // Botones: Exportar CSV + Cerrar
+                JButton btnExportarCsv   = new JButton("Exportar a CSV");
+                stylePrimaryButton(btnExportarCsv);
+
                 JButton btnCerrarDetalle = new JButton("Cerrar");
                 styleExitButton(btnCerrarDetalle);
 
                 JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
                 south.setOpaque(false);
+                south.add(btnExportarCsv);
                 south.add(btnCerrarDetalle);
                 rootPanel.add(south, BorderLayout.SOUTH);
 
@@ -302,6 +298,7 @@ public class ConsultarCortesCaja {
                 dlg.setLocationRelativeTo(getOwnerWindow());
 
                 btnCerrarDetalle.addActionListener(ev -> dlg.dispose());
+                btnExportarCsv.addActionListener(ev -> exportarDetalleCorteCSV(id));
 
                 dlg.setVisible(true);
             }
@@ -313,7 +310,6 @@ public class ConsultarCortesCaja {
         }
     }
 
-    // helper para una fila "Etiqueta : Valor" en el grid
     private void addDetalleRow(JPanel grid, String etiqueta, String valor) {
         JLabel l = new JLabel(etiqueta + ":");
         l.setFont(fText.deriveFont(Font.BOLD));
@@ -327,13 +323,13 @@ public class ConsultarCortesCaja {
         grid.add(v);
     }
 
-    // formato uniforme de dinero
     private String money(double v) {
         return String.format("$%,.2f", v);
     }
 
-
     // ===================== Exportar =====================
+
+    // exportar desde la tabla general (ya lo tenías)
     private void exportarCorteSeleccionadoCSV() {
         Integer id = getSelectedCorteId();
         if (id == null) {
@@ -383,10 +379,90 @@ public class ConsultarCortesCaja {
         }
     }
 
+    // exportar SOLO el detalle del corte (Campo,Valor)
+    private void exportarDetalleCorteCSV(int id) {
+        final String sql = """
+            SELECT
+              c.*,
+              COALESCE(s.nombre, '') AS sucursal,
+              COALESCE(u.nombre, t.nombre, CONCAT('ID ', u.id)) AS usuario
+            FROM corte_caja_resumen c
+            LEFT JOIN Usuarios u     ON u.id = c.usuario_id
+            LEFT JOIN trabajadores t ON t.id = u.trabajador_id
+            LEFT JOIN sucursales s   ON s.id = t.sucursal_id
+            WHERE c.id = ?
+        """;
+
+        try (Connection con = DB.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    JOptionPane.showMessageDialog(root(), "No se encontró el corte ID " + id);
+                    return;
+                }
+
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Timestamp ts = rs.getTimestamp("generado_en");
+                String fecha = (ts != null ? sdf.format(ts) : "");
+
+                String sucursal      = rs.getString("sucursal");
+                String usuarioNombre = rs.getString("usuario");
+
+                double montoInicial       = rs.getDouble("monto_inicial");
+                double totalEfectivo      = rs.getDouble("total_efectivo");
+                double totalTransferencia = rs.getDouble("total_transferencia");
+                double totalEntradas      = rs.getDouble("total_entradas");
+                double totalSalidas       = rs.getDouble("total_salidas");
+                double totalCobrosServ    = rs.getDouble("total_cobros_servicios");
+                double totalCobrosExtras  = rs.getDouble("total_cobros_extras");
+                double totalContadores    = rs.getDouble("total_contadores");
+                double totalEnCaja        = rs.getDouble("total_en_caja");
+                double totalContado       = rs.getDouble("total_contado");
+                double diferencia         = rs.getDouble("diferencia");
+                double ingresosTotales    = rs.getDouble("ingresos_totales");
+
+                JFileChooser fc = new JFileChooser();
+                fc.setDialogTitle("Exportar detalle corte #" + id);
+                fc.setSelectedFile(new java.io.File("corte_detalle_" + id + ".csv"));
+                if (fc.showSaveDialog(root()) != JFileChooser.APPROVE_OPTION) return;
+
+                try (FileWriter wr = new FileWriter(fc.getSelectedFile())) {
+                    wr.write("Campo,Valor\n");
+                    wr.write(esc("Sucursal")          + "," + esc(sucursal)                 + "\n");
+                    wr.write(esc("Usuario")           + "," + esc(usuarioNombre)            + "\n");
+                    wr.write(esc("Fecha")             + "," + esc(fecha)                    + "\n");
+                    wr.write(esc("Monto inicial")     + "," + esc(String.valueOf(montoInicial))       + "\n");
+                    wr.write(esc("Total efectivo")    + "," + esc(String.valueOf(totalEfectivo))      + "\n");
+                    wr.write(esc("Total transferencia")+ "," + esc(String.valueOf(totalTransferencia))+ "\n");
+                    wr.write(esc("Total entradas")    + "," + esc(String.valueOf(totalEntradas))      + "\n");
+                    wr.write(esc("Total salidas")     + "," + esc(String.valueOf(totalSalidas))       + "\n");
+                    wr.write(esc("Cobros servicios")  + "," + esc(String.valueOf(totalCobrosServ))    + "\n");
+                    wr.write(esc("Cobros extras")     + "," + esc(String.valueOf(totalCobrosExtras))  + "\n");
+                    wr.write(esc("Total contadores")  + "," + esc(String.valueOf(totalContadores))    + "\n");
+                    wr.write(esc("Total en caja")     + "," + esc(String.valueOf(totalEnCaja))        + "\n");
+                    wr.write(esc("Total contado")     + "," + esc(String.valueOf(totalContado))       + "\n");
+                    wr.write(esc("Diferencia")        + "," + esc(String.valueOf(diferencia))         + "\n");
+                    wr.write(esc("Ingresos totales")  + "," + esc(String.valueOf(ingresosTotales))    + "\n");
+                }
+
+                JOptionPane.showMessageDialog(root(),
+                        "Detalle exportado a:\n" + fc.getSelectedFile().getAbsolutePath());
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(root(),
+                    "No se pudo exportar detalle:\n" + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
     private String esc(String s) {
         if (s == null) return "";
         if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
-            return "\"" + s.replace("\"","\"\"") + "\"";
+            return "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;
     }
@@ -412,28 +488,24 @@ public class ConsultarCortesCaja {
 
     // ========== SOLO ESTILO (no cambia funcionalidades) ==========
     private void applyTheme() {
-        // paneles como tarjetas
         decorateAsCard(panelContenedor);
         decorateAsCard(panelTabla);
         decorateAsCard(panelBotones);
         decorateAsCard(panelMain);
 
-        // scrollpane fondo blanco
         if (scrTabla != null) {
             scrTabla.getViewport().setBackground(CARD_BG);
-            scrTabla.setBorder(new EmptyBorder(0,0,0,0));
+            scrTabla.setBorder(new EmptyBorder(0, 0, 0, 0));
         }
 
-        // botones
         if (exportarACSVButton != null) stylePrimaryButton(exportarACSVButton);
         if (cerrarButton != null)       styleExitButton(cerrarButton);
     }
 
     private void stylePrimaryButton(JButton b) {
         if (b == null) return;
-        // Igual que pantallaCajero: usa ModernButtonUI de PantallaAdmin
         b.setUI(new PantallaAdmin.ModernButtonUI(GREEN_DARK, GREEN_SOFT, GREEN_DARK, Color.WHITE, 15, true));
-        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setBorder(new EmptyBorder(10, 18, 10, 28));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));
         b.setForeground(Color.WHITE);
@@ -441,12 +513,11 @@ public class ConsultarCortesCaja {
 
     private void styleExitButton(JButton b) {
         if (b == null) return;
-        // Botón rojo consistente con tu estilo
         Color ROJO_BASE    = new Color(0xDC2626);
         Color GRIS_HOVER   = new Color(0xD1D5DB);
         Color GRIS_PRESSED = new Color(0x9CA3AF);
         b.setUI(new Login.ModernButtonUI(ROJO_BASE, GRIS_HOVER, GRIS_PRESSED, Color.BLACK, 22, true));
-        b.setBorder(new EmptyBorder(10,18,10,28));
+        b.setBorder(new EmptyBorder(10, 18, 10, 28));
         b.setForeground(Color.WHITE);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -456,13 +527,14 @@ public class ConsultarCortesCaja {
         if (c == null) return;
         c.setOpaque(true);
         c.setBackground(CARD_BG);
-        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(14, BORDER_SOFT, new Color(0,0,0,28)));
+        c.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(
+                14, BORDER_SOFT, new Color(0, 0, 0, 28)));
     }
 
     // ===== Renderers visuales =====
     private static class HeaderRenderer extends DefaultTableCellRenderer {
         private final TableCellRenderer base;
-        HeaderRenderer(TableCellRenderer base){ this.base = base; }
+        HeaderRenderer(TableCellRenderer base) { this.base = base; }
         @Override
         public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
             Component comp = base.getTableCellRendererComponent(t, v, s, f, r, c);
@@ -470,11 +542,12 @@ public class ConsultarCortesCaja {
             comp.setForeground(Color.WHITE);
             comp.setFont(new Font("Segoe UI", Font.BOLD, 13));
             if (comp instanceof JComponent jc) {
-                jc.setBorder(new EmptyBorder(6,8,6,8));
+                jc.setBorder(new EmptyBorder(6, 8, 6, 8));
             }
             return comp;
         }
     }
+
     private static class ZebraRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
@@ -486,7 +559,7 @@ public class ConsultarCortesCaja {
                 setBackground((r % 2 == 0) ? Color.WHITE : TABLE_ALT);
                 setForeground(TEXT_PRIMARY);
             }
-            setBorder(new EmptyBorder(6,8,6,8));
+            setBorder(new EmptyBorder(6, 8, 6, 8));
             if (v instanceof Number) setHorizontalAlignment(RIGHT);
             else setHorizontalAlignment(LEFT);
             return this;
