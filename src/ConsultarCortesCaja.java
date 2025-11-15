@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 
+
 public class ConsultarCortesCaja {
     // --- UI (del .form) ---
     private JPanel panelMain;
@@ -40,6 +41,7 @@ public class ConsultarCortesCaja {
     private TableRowSorter<DefaultTableModel> sorter;
 
     // --- ctor ---
+    // --- ctor ---
     public ConsultarCortesCaja() {
         construirTabla();
         cargarCortes();
@@ -52,6 +54,21 @@ public class ConsultarCortesCaja {
                 Window w = getOwnerWindow();
                 if (w instanceof JDialog d) d.dispose();
                 else if (w != null) w.dispose();
+            });
+        }
+
+        // NUEVO: doble click en la tabla para ver detalle del corte
+        if (tblCortes != null) {
+            tblCortes.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent e) {
+                    if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
+                        Integer id = getSelectedCorteId();
+                        if (id != null) {
+                            mostrarDetalleCorte(id);
+                        }
+                    }
+                }
             });
         }
 
@@ -68,6 +85,7 @@ public class ConsultarCortesCaja {
         }
         applyTheme(); // aplica tarjetas, botones, encabezados, etc.
     }
+
 
     /** Crea y devuelve el diálogo listo para mostrarse. */
     public static JDialog createDialog(Window owner) {
@@ -165,6 +183,155 @@ public class ConsultarCortesCaja {
         if (v == null) return null;
         return (v instanceof Integer) ? (Integer) v : Integer.parseInt(v.toString());
     }
+
+    // ===================== Detalle (doble click) =====================
+    private void mostrarDetalleCorte(int id) {
+        final String sql = """
+            SELECT c.*,
+                   COALESCE(u.nombre, CONCAT('ID ', c.usuario_id)) AS usuario,
+                   COALESCE(s.nombre, '') AS sucursal
+            FROM corte_caja_resumen c
+            LEFT JOIN Usuarios    u ON u.id = c.usuario_id
+            LEFT JOIN trabajadores t ON t.id = u.trabajador_id
+            LEFT JOIN sucursales   s ON s.id = t.sucursal_id
+            WHERE c.id = ?
+        """;
+
+        try (Connection con = DB.get();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    JOptionPane.showMessageDialog(root(), "No se encontró el corte ID " + id);
+                    return;
+                }
+
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Timestamp ts = rs.getTimestamp("generado_en");
+                String fecha = (ts != null ? sdf.format(ts) : "");
+
+                String sucursal      = rs.getString("sucursal");
+                String usuarioNombre = rs.getString("usuario");
+
+                double montoInicial       = rs.getDouble("monto_inicial");
+                double totalEfectivo      = rs.getDouble("total_efectivo");
+                double totalTransferencia = rs.getDouble("total_transferencia");
+                double totalEntradas      = rs.getDouble("total_entradas");
+                double totalSalidas       = rs.getDouble("total_salidas");
+                double totalCobrosServ    = rs.getDouble("total_cobros_servicios");
+                double totalCobrosExtras  = rs.getDouble("total_cobros_extras");
+                double totalContadores    = rs.getDouble("total_contadores");
+                double totalEnCaja        = rs.getDouble("total_en_caja");
+                double totalContado       = rs.getDouble("total_contado");
+                double diferencia         = rs.getDouble("diferencia");
+                double ingresosTotales    = rs.getDouble("ingresos_totales");
+
+                // ===== Construir UI =====
+                JPanel rootPanel = new JPanel(new BorderLayout(0, 12));
+                rootPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
+                // gris clarito de fondo para que combine con tus pantallas
+                rootPanel.setBackground(new Color(0xF3F4F6));
+
+                JLabel lblTituloDetalle = new JLabel("Detalle del corte #" + id);
+                lblTituloDetalle.setFont(fTitle);
+                lblTituloDetalle.setForeground(TEXT_PRIMARY);
+
+                String subt = "";
+                if (sucursal != null && !sucursal.isEmpty()) subt += sucursal;
+                if (fecha != null && !fecha.isEmpty()) {
+                    if (!subt.isEmpty()) subt += "  ·  ";
+                    subt += fecha;
+                }
+                JLabel lblSub = new JLabel(subt);
+                lblSub.setFont(fText);
+                lblSub.setForeground(TEXT_MUTED);
+
+                JPanel header = new JPanel(new BorderLayout(0, 4));
+                header.setOpaque(false);
+                header.add(lblTituloDetalle, BorderLayout.NORTH);
+                header.add(lblSub, BorderLayout.SOUTH);
+
+                rootPanel.add(header, BorderLayout.NORTH);
+
+                // "Tarjeta" con sombra igual que el resto de la app
+                JPanel card = new JPanel(new BorderLayout());
+                card.setOpaque(true);
+                card.setBackground(CARD_BG);
+                card.setBorder(new PantallaAdmin.CompoundRoundShadowBorder(
+                        14, BORDER_SOFT, new Color(0,0,0,28)));
+
+                JPanel grid = new JPanel(new GridLayout(0, 2, 18, 10));
+                grid.setOpaque(false);
+
+                addDetalleRow(grid, "Sucursal",            sucursal);
+                addDetalleRow(grid, "Usuario",             usuarioNombre);
+                addDetalleRow(grid, "Monto inicial",       money(montoInicial));
+                addDetalleRow(grid, "Total efectivo",      money(totalEfectivo));
+                addDetalleRow(grid, "Total transferencia", money(totalTransferencia));
+                addDetalleRow(grid, "Total entradas",      money(totalEntradas));
+                addDetalleRow(grid, "Total salidas",       money(totalSalidas));
+                addDetalleRow(grid, "Cobros servicios",    money(totalCobrosServ));
+                addDetalleRow(grid, "Cobros extras",       money(totalCobrosExtras));
+                addDetalleRow(grid, "Total contadores",    money(totalContadores));
+                addDetalleRow(grid, "Total en caja",       money(totalEnCaja));
+                addDetalleRow(grid, "Total contado",       money(totalContado));
+                addDetalleRow(grid, "Diferencia",          money(diferencia));
+                addDetalleRow(grid, "Ingresos totales",    money(ingresosTotales));
+
+                card.add(grid, BorderLayout.CENTER);
+                rootPanel.add(card, BorderLayout.CENTER);
+
+                JButton btnCerrarDetalle = new JButton("Cerrar");
+                styleExitButton(btnCerrarDetalle);
+
+                JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+                south.setOpaque(false);
+                south.add(btnCerrarDetalle);
+                rootPanel.add(south, BorderLayout.SOUTH);
+
+                JDialog dlg = new JDialog(
+                        getOwnerWindow(),
+                        "Detalle corte #" + id,
+                        Dialog.ModalityType.APPLICATION_MODAL
+                );
+                dlg.setContentPane(rootPanel);
+                dlg.setMinimumSize(new Dimension(540, 520));
+                dlg.pack();
+                dlg.setLocationRelativeTo(getOwnerWindow());
+
+                btnCerrarDetalle.addActionListener(ev -> dlg.dispose());
+
+                dlg.setVisible(true);
+            }
+
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(root(),
+                    "Error al cargar detalle:\n" + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    // helper para una fila "Etiqueta : Valor" en el grid
+    private void addDetalleRow(JPanel grid, String etiqueta, String valor) {
+        JLabel l = new JLabel(etiqueta + ":");
+        l.setFont(fText.deriveFont(Font.BOLD));
+        l.setForeground(TEXT_MUTED);
+
+        JLabel v = new JLabel(valor != null ? valor : "");
+        v.setFont(fText);
+        v.setForeground(TEXT_PRIMARY);
+
+        grid.add(l);
+        grid.add(v);
+    }
+
+    // formato uniforme de dinero
+    private String money(double v) {
+        return String.format("$%,.2f", v);
+    }
+
 
     // ===================== Exportar =====================
     private void exportarCorteSeleccionadoCSV() {
